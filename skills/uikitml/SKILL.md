@@ -1,6 +1,6 @@
 ---
 name: uikitml
-description: Write, validate, render, and convert Drawcall UIKitML for pmndrs/uikit interfaces. Use when working with .uikitml files, authoring UIKitML markup, choosing default/Lucide/Horizon components, fixing UIKitML validation errors, or using the uikitml CLI.
+description: Write, validate, render, and convert UIKitML for pmndrs/uikit interfaces. Use when working with .uikitml files, authoring 3D user interfaces, choosing default/Lucide/Horizon components, fixing UIKitML validation errors, or using the uikitml CLI.
 ---
 
 # UIKitML
