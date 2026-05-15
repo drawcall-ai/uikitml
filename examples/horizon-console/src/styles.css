@@ -1,0 +1,16 @@
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #030712;
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+}

@@ -1,0 +1,490 @@
+import { Container, getPreferredColorScheme, Image, setPreferredColorScheme } from "@pmndrs/uikit";
+import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import {
+  convertToReact,
+  generate,
+  htmlComponentSet,
+  instantiate,
+  parse,
+  type ComponentConstructor,
+  type ComponentSet,
+} from "../src/index.js";
+
+function inputProperties(component: unknown): Record<string, unknown> {
+  return ((component as { inputProperties?: Record<string, unknown> }).inputProperties ?? {});
+}
+
+function classList(component: unknown): string[] {
+  return (((component as { classList?: { list?: string[] } }).classList?.list ?? []).filter(Boolean));
+}
+
+function expectStyleDeclarationError(
+  declaration: string,
+  code: string,
+  inlineMessage: string,
+  stylesheetMessage: string,
+) {
+  const inline = parse(`<div style="${declaration}" />`);
+
+  expect(inline.success).toBe(false);
+  if (!inline.success) {
+    expect(inline.errors[0]?.code).toBe(code);
+    expect(inline.errors[0]?.message).toBe(inlineMessage);
+  }
+
+  const stylesheet = parse(`<style>.card { ${declaration} }</style><div />`);
+
+  expect(stylesheet.success).toBe(false);
+  if (!stylesheet.success) {
+    expect(stylesheet.errors[0]?.code).toBe(code);
+    expect(stylesheet.errors[0]?.message).toBe(stylesheetMessage);
+  }
+}
+
+describe("parse", () => {
+  it("builds an AST with metadata from a simple document", () => {
+    const result = parse(`
+      <style>
+        .card { background-color: red; }
+      </style>
+      <div id="root" class="card card" font-size="18" visibility="hidden">
+        Hello &amp; friends
+      </div>
+    `);
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    expect(result.ast.root.kind).toBe("element");
+    if (result.ast.root.kind !== "element") {
+      return;
+    }
+    expect(result.ast.root.tagName).toBe("div");
+    expect(result.ast.root.props).toMatchObject({
+      id: "root",
+      fontSize: "18",
+      visibility: "hidden",
+    });
+    expect(result.ast.root.classList).toEqual(["card", "card"]);
+    expect(result.ast.root.children).toHaveLength(1);
+    expect(result.ast.root.meta.sourceTag).toBe("div");
+    expect(result.ast.stylesheet.card).toMatchObject({ backgroundColor: "red" });
+  });
+
+  it("rejects unknown components by default", () => {
+    const result = parse("<Unknown />");
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.errors.map((error) => error.code)).toContain("unknown-component");
+  });
+
+  it("treats component tag names as exact and case-sensitive", () => {
+    const result = parse("<DIV />");
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.errors[0]?.code).toBe("unknown-component");
+  });
+
+  it("rejects camelCase property names in element markup", () => {
+    const result = parse('<div backgroundColor="red" />');
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.errors[0]?.code).toBe("invalid-property-name");
+    expect(result.errors[0]?.message).toBe(
+      'Invalid property name "backgroundColor" on element "<div>". Use "background-color".',
+    );
+  });
+
+  it("rejects camelCase property names in style declarations", () => {
+    expectStyleDeclarationError(
+      "backgroundColor: red;",
+      "invalid-property-name",
+      'Invalid property name "backgroundColor" on element "<div>". Use "background-color".',
+      'Invalid property name "backgroundColor" on selector ".card". Use "background-color".',
+    );
+  });
+
+  it("uses the same grammar for inline and stylesheet declarations", () => {
+    expectStyleDeclarationError(
+      "background-color red;",
+      "invalid-style-declaration",
+      'Invalid style declaration "background-color red" on element "<div>". Expected "property: value".',
+      'Invalid style declaration "background-color red" on selector ".card". Expected "property: value".',
+    );
+  });
+
+  it("validates inline and stylesheet declaration values the same way", () => {
+    expectStyleDeclarationError(
+      "opacity: loud;",
+      "invalid-property-value",
+      'Invalid value for property "opacity" on element "<div>": value "loud". Expected number, number string, percentage string, signal-like object, or "initial".',
+      'Invalid value for property "opacity" on selector ".card": value "loud". Expected number, number string, percentage string, signal-like object, or "initial".',
+    );
+  });
+
+  it("validates inline and stylesheet declaration properties the same way", () => {
+    expectStyleDeclarationError(
+      "made-up: 1;",
+      "unknown-property",
+      'Unknown property "madeUp" on element "<div>".',
+      'Unknown property "madeUp" on selector ".card".',
+    );
+  });
+
+  it("validates unknown properties through schemas", () => {
+    const result = parse('<div made-up="1" />');
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.errors.map((error) => error.code)).toContain("unknown-property");
+  });
+
+  it("validates font-family against bundled MSDF font names", () => {
+    const valid = parse(`
+      <style>
+        .title { font-family: open-sans; }
+      </style>
+      <div font-family="roboto" class="title">Ready</div>
+    `);
+
+    expect(valid.success).toBe(true);
+
+    const invalidAttribute = parse('<div font-family="comic-sans" />');
+    expect(invalidAttribute.success).toBe(false);
+    if (!invalidAttribute.success) {
+      expect(invalidAttribute.errors[0]?.code).toBe("invalid-property-value");
+      expect(invalidAttribute.errors[0]?.message).toContain('property "fontFamily"');
+    }
+
+    const invalidStylesheet = parse("<style>.bad { font-family: comic-sans; }</style><div />");
+    expect(invalidStylesheet.success).toBe(false);
+    if (!invalidStylesheet.success) {
+      expect(invalidStylesheet.errors[0]?.code).toBe("invalid-property-value");
+      expect(invalidStylesheet.errors[0]?.message).toContain('property "fontFamily"');
+    }
+  });
+
+  it("reports invalid property names and values with fixable messages", () => {
+    class Badge extends Container {}
+    const components: ComponentSet = {
+      Badge: {
+        component: Badge as unknown as ComponentConstructor,
+        schema: z.object({ count: z.number().optional() }).strict(),
+        canHaveChildren: false,
+      },
+    };
+
+    const invalidValue = parse('<Badge count="2" />', { componentSets: [components] });
+    expect(invalidValue.success).toBe(false);
+    if (!invalidValue.success) {
+      expect(invalidValue.errors[0]?.message).toBe(
+        'Invalid value for property "count" on element "<Badge>": value "2". Expected number.',
+      );
+    }
+
+    const unknownProperty = parse('<Badge tone="loud" />', { componentSets: [components] });
+    expect(unknownProperty.success).toBe(false);
+    if (!unknownProperty.success) {
+      expect(unknownProperty.errors[0]?.code).toBe("unknown-property");
+      expect(unknownProperty.errors[0]?.message).toBe(
+        'Unknown property "tone" on element "<Badge>".',
+      );
+    }
+  });
+
+  it("reports invalid stylesheet properties with fixable messages", () => {
+    const result = parse("<style>.bad { made-up: 1; }</style><div />");
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.errors[0]?.code).toBe("unknown-property");
+    expect(result.errors[0]?.message).toBe(
+      'Unknown property "madeUp" on selector ".bad".',
+    );
+  });
+
+  it("reports invalid stylesheet values with selector targets", () => {
+    const result = parse('<style>.bad { opacity: loud; }</style><div />');
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.errors[0]?.message).toBe(
+      'Invalid value for property "opacity" on selector ".bad": value "loud". Expected number, number string, percentage string, signal-like object, or "initial".',
+    );
+  });
+
+  it("reports union validation failures as one expected-alternatives error", () => {
+    class Box extends Container {}
+    const components: ComponentSet = {
+      Box: {
+        component: Box as unknown as ComponentConstructor,
+        schema: z.object({ size: z.union([z.number(), z.literal("auto")]).optional() }).strict(),
+        canHaveChildren: false,
+      },
+    };
+
+    const result = parse('<Box size="huge" />', { componentSets: [components] });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]?.message).toBe(
+      'Invalid value for property "size" on element "<Box>": value "huge". Expected number or "auto".',
+    );
+  });
+
+  it("rejects children on components that cannot have children", () => {
+    const result = parse('<img src="photo.png">caption</img>');
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.errors.map((error) => error.code)).toContain("children-not-allowed");
+  });
+
+  it("requires exactly one root component while allowing style blocks anywhere", () => {
+    const result = parse("<style>.x { color: red; }</style><div /><button />");
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.errors.map((error) => error.code)).toContain("multiple-roots");
+  });
+
+  it("parses preferred color scheme metadata without treating it as a root", () => {
+    const result = parse('<meta preferred-color-scheme="dark" /><div />');
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    expect(result.ast.metadata.preferredColorScheme).toBe("dark");
+    expect(generate(result.ast)).toBe('<meta preferred-color-scheme="dark" />\n<div />');
+  });
+
+  it("rejects invalid preferred color scheme metadata", () => {
+    const result = parse('<meta preferred-color-scheme="sepia" /><div />');
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.errors[0]?.code).toBe("invalid-metadata");
+  });
+
+  it("allows UIKit input aliases inside stylesheets", () => {
+    const result = parse(`
+      <style>
+        .card { border-radius: 4; opacity: 50%; }
+      </style>
+      <div class="card" />
+    `);
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    expect(result.ast.stylesheet.card).toMatchObject({
+      borderRadius: "4",
+      opacity: "50%",
+    });
+  });
+
+  it("requires explicit closing or self-closing syntax", () => {
+    const result = parse('<img src="photo.png">');
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.errors.map((error) => error.code)).toContain("syntax");
+  });
+
+  it("allows component sets to extend and override html built-ins", () => {
+    class Button extends Container {}
+    const components: ComponentSet = {
+      Button: {
+        component: Button as unknown as ComponentConstructor,
+        schema: z.object({ variant: z.string().optional() }).strict(),
+        canHaveChildren: true,
+      },
+      div: {
+        component: Image as unknown as ComponentConstructor,
+        schema: z.object({ src: z.string() }).strict(),
+        canHaveChildren: false,
+      },
+    };
+
+    const custom = parse('<Button variant="primary">Save</Button>', { componentSets: [components] });
+    expect(custom.success).toBe(true);
+    if (custom.success) {
+      expect(instantiate(custom.ast, { componentSets: [components] })).toBeInstanceOf(Button);
+    }
+
+    const overridden = parse('<div src="photo.png" />', { componentSets: [components] });
+    expect(overridden.success).toBe(true);
+    if (overridden.success) {
+      expect(instantiate(overridden.ast, { componentSets: [components] })).toBeInstanceOf(Image);
+    }
+  });
+
+  it("can disable the html component set", () => {
+    const result = parse("<div />", { includeHtmlComponentSet: false });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.errors.map((error) => error.code)).toContain("unknown-component");
+  });
+
+  it("parses without instantiating UIKit components", () => {
+    const result = parse('<style>.card { opacity: 50%; }</style><div class="card"><span>Ready</span></div>');
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    expect(result.ast.root.kind).toBe("element");
+    expect(result.ast.stylesheet.card).toMatchObject({ opacity: "50%" });
+  });
+
+  it("stores component origin while keeping defaults out of authored AST props", () => {
+    const result = parse("<h1>Hello</h1>");
+
+    expect(result.success).toBe(true);
+    if (!result.success || result.ast.root.kind !== "element") {
+      return;
+    }
+
+    expect(result.ast.root.origin).toEqual({ kit: "html", name: "Container" });
+    expect(result.ast.root.props).not.toHaveProperty("fontSize");
+
+    const component = instantiate(result.ast);
+    expect(inputProperties(component)).toMatchObject({
+      fontSize: 32,
+      fontWeight: "bold",
+    });
+  });
+
+  it("applies preferred color scheme when instantiating", () => {
+    setPreferredColorScheme("system");
+    const result = parse('<meta preferred-color-scheme="dark" /><div />');
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    instantiate(result.ast);
+    expect(getPreferredColorScheme()).toBe("dark");
+    setPreferredColorScheme("system");
+  });
+
+  it("emits preferred color scheme setup when converting to React", () => {
+    const result = parse('<meta preferred-color-scheme="dark" /><div class="card">Ready</div>');
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    expect(convertToReact(result.ast, { componentName: "UI" })).toContain(
+      'setPreferredColorScheme("dark");',
+    );
+  });
+
+  it("injects font family data for interpreted and converted documents", () => {
+    const result = parse(`
+      <style>
+        .label { font-family: open-sans; }
+      </style>
+      <div font-family="roboto">Ready</div>
+    `);
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    const component = instantiate(result.ast);
+    expect(inputProperties(component).fontFamilies).toMatchObject({
+      "open-sans": {
+        light: expect.any(Function),
+        medium: expect.any(Function),
+        "semi-bold": expect.any(Function),
+        bold: expect.any(Function),
+      },
+      roboto: {
+        light: expect.any(Function),
+        medium: expect.any(Function),
+        "semi-bold": expect.any(Function),
+        bold: expect.any(Function),
+      },
+    });
+
+    const react = convertToReact(result.ast, { componentName: "UI" });
+    expect(react).toContain('import { openSans } from "@pmndrs/msdfonts/open-sans";');
+    expect(react).toContain('import { roboto } from "@pmndrs/msdfonts/roboto";');
+    expect(react).toContain('fontFamilies={{ "open-sans": openSans, roboto: roboto }}');
+  });
+
+  it("can parse and instantiate without schema validation", () => {
+    const result = parse('<div made-up="1" style="opacity: loud;">Ready</div>', {
+      validate: false,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    const component = instantiate(result.ast);
+    expect(inputProperties(component)).toMatchObject({
+      madeUp: "1",
+      opacity: "loud",
+    });
+  });
+
+  it("parses and generates canonical UIKitML", () => {
+    const result = parse('<div style="background-color: blue;" font-size="18">Hello</div>');
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    const markup = generate(result.ast);
+
+    expect(markup).toBe('<div font-size="18" style="background-color: blue">\n  Hello\n</div>');
+
+    const roundTrip = parse(markup);
+    expect(roundTrip.success).toBe(true);
+  });
+
+  it("exports the default html component set as a plain component set", () => {
+    expect(htmlComponentSet.div?.canHaveChildren).toBe(true);
+    expect(htmlComponentSet.img?.canHaveChildren).toBe(false);
+  });
+});

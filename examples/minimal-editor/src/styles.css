@@ -1,0 +1,140 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #0b1020;
+  color: #eef4ff;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+#app {
+  display: grid;
+  grid-template-columns: minmax(360px, 42vw) minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.editor-pane {
+  display: grid;
+  grid-template-rows: 52px minmax(0, 1fr) 148px;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid #263044;
+  background: #111827;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #263044;
+}
+
+.kit-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #b8c4d8;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.kit-select select {
+  min-width: 176px;
+  height: 32px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #182235;
+  color: #f8fafc;
+  font: inherit;
+  padding: 0 10px;
+}
+
+.parse-status {
+  min-width: 72px;
+  color: #93a4bc;
+  font-size: 12px;
+  text-align: right;
+}
+
+#source-editor {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: #0f172a;
+  color: #e5eefb;
+  font:
+    13px/1.55 "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
+    monospace;
+  padding: 16px;
+  tab-size: 2;
+}
+
+.error-panel {
+  overflow: auto;
+  border-top: 1px solid #263044;
+  background: #101827;
+  color: #7dd3fc;
+  font:
+    12px/1.45 "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
+    monospace;
+  padding: 12px 14px;
+}
+
+.error-panel.has-errors {
+  color: #fecaca;
+  background: #24111b;
+}
+
+.error-entry + .error-entry {
+  margin-top: 8px;
+}
+
+.preview-pane {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background:
+    linear-gradient(#172033 1px, transparent 1px),
+    linear-gradient(90deg, #172033 1px, transparent 1px),
+    #0b1020;
+  background-size: 36px 36px;
+}
+
+#preview-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+}
+
+@media (max-width: 860px) {
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(420px, 54vh) minmax(360px, 46vh);
+  }
+
+  .editor-pane {
+    grid-template-rows: 52px minmax(0, 1fr) 116px;
+    border-right: 0;
+    border-bottom: 1px solid #263044;
+  }
+
+  #preview-canvas {
+    min-height: 360px;
+  }
+}

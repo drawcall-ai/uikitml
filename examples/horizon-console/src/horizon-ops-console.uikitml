@@ -1,0 +1,196 @@
+<meta preferred-color-scheme="dark" />
+
+<style>
+  .dashboard { width: 1180; pixel-size: 0.0052; flex-direction: column; gap: 18; padding: 24; background-color: #07111f; border-radius: 28; color: #f8fafc; font-family: work-sans; }
+  .topbar { flex-direction: row; align-items: center; justify-content: space-between; gap: 18; }
+  .brand { flex-direction: row; align-items: center; gap: 14; }
+  .logo { width: 54; height: 54; border-radius: 18; background-color: #0ea5e9; align-items: center; justify-content: center; }
+  .logo-icon { width: 30; height: 30; color: white; }
+  .stack { flex-direction: column; gap: 4; }
+  .title { font-size: 30; font-weight: bold; color: #ffffff; font-family: playfair-display; }
+  .subtitle { font-size: 14; color: #94a3b8; }
+  .actions { flex-direction: row; align-items: center; gap: 10; }
+  .body { flex-direction: row; gap: 18; flex-grow: 1; }
+  .sidebar { width: 230; flex-direction: column; gap: 12; padding: 14; background-color: #0b1728; border-radius: 22; }
+  .nav-item { flex-direction: row; align-items: center; gap: 10; padding: 11; border-radius: 14; color: #cbd5e1; }
+  .nav-item-active { background-color: #123a58; color: #ffffff; }
+  .nav-icon { width: 18; height: 18; color: #38bdf8; }
+  .main { flex-direction: column; gap: 18; flex-grow: 1; }
+  .metrics { flex-direction: row; gap: 14; }
+  .metric { flex-grow: 1; flex-direction: column; gap: 10; padding: 16; background-color: #0b1728; border-radius: 20; border-width: 1; border-color: #1e3a5f; }
+  .metric-head { flex-direction: row; align-items: center; justify-content: space-between; }
+  .metric-icon { width: 22; height: 22; color: #7dd3fc; }
+  .metric-value { font-size: 28; font-weight: bold; color: #ffffff; }
+  .metric-label { font-size: 13; color: #94a3b8; }
+  .grid { flex-direction: row; gap: 18; flex-grow: 1; }
+  .left-col { flex-direction: column; gap: 18; flex-grow: 1; }
+  .right-col { width: 300; flex-direction: column; gap: 18; }
+  .card { flex-direction: column; gap: 14; padding: 18; background-color: #0b1728; border-radius: 22; border-width: 1; border-color: #1f2d44; }
+  .card-row { flex-direction: row; align-items: center; justify-content: space-between; gap: 12; }
+  .section-title { font-size: 18; font-weight: bold; color: #ffffff; }
+  .muted { font-size: 13; color: #94a3b8; }
+  .timeline { flex-direction: column; gap: 10; }
+  .event { flex-direction: row; gap: 12; align-items: center; padding: 11; border-radius: 14; background-color: #111d30; }
+  .event-icon { width: 18; height: 18; color: #67e8f9; }
+  .event-copy { flex-direction: column; gap: 2; flex-grow: 1; }
+  .event-title { font-size: 14; font-weight: bold; color: #e2e8f0; }
+  .event-time { font-size: 12; color: #64748b; }
+  .system-map { height: 190; flex-direction: row; align-items: center; justify-content: space-between; padding: 18; background-color: #081524; border-radius: 20; }
+  .node { width: 92; height: 92; border-radius: 28; background-color: #0f2740; border-width: 1; border-color: #2563eb; align-items: center; justify-content: center; }
+  .node-hot { background-color: #3b1d31; border-color: #f43f5e; }
+  .node-icon { width: 34; height: 34; color: #93c5fd; }
+  .node-hot > * { color: #fb7185; }
+  .controls { flex-direction: column; gap: 12; }
+  .control-line { flex-direction: row; align-items: center; justify-content: space-between; gap: 12; }
+  .field-row { flex-direction: row; align-items: center; gap: 10; }
+  .input-shell { flex-grow: 1; }
+  .tiny { font-size: 12; color: #64748b; }
+  .status-good { color: #86efac; }
+  .status-warn { color: #fbbf24; }
+  .fill { flex-grow: 1; }
+</style>
+
+<Panel class="dashboard">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo"><RadioTower class="logo-icon" /></div>
+      <div class="stack">
+        <h1 class="title">Horizon Ops Console</h1>
+        <p class="subtitle">Northstar fleet telemetry, deployment gates, and live incident posture</p>
+      </div>
+    </div>
+    <div class="actions">
+      <Badge label="Live" variant="positive" />
+      <Badge label="2 warnings" variant="secondary" />
+      <Button variant="secondary" size="sm">Audit Trail</Button>
+      <Button variant="primary" size="sm">Deploy</Button>
+    </div>
+  </div>
+
+  <div class="body">
+    <Panel class="sidebar">
+      <div class="nav-item nav-item-active"><Gauge class="nav-icon" /><span>Overview</span></div>
+      <div class="nav-item"><Route class="nav-icon" /><span>Missions</span></div>
+      <div class="nav-item"><Server class="nav-icon" /><span>Edge Nodes</span></div>
+      <div class="nav-item"><ShieldCheck class="nav-icon" /><span>Access</span></div>
+      <Divider orientation="horizontal" />
+      <div class="stack">
+        <p class="muted">Environment</p>
+        <RadioGroup default-value="balanced" class="stack">
+          <RadioGroupItem value="eco">Eco Scan</RadioGroupItem>
+          <RadioGroupItem value="balanced">Balanced</RadioGroupItem>
+          <RadioGroupItem value="burst">Burst Mode</RadioGroupItem>
+        </RadioGroup>
+      </div>
+      <div class="fill"></div>
+      <Button variant="tertiary" size="sm">Open Settings</Button>
+    </Panel>
+
+    <div class="main">
+      <div class="metrics">
+        <Panel class="metric">
+          <div class="metric-head"><Activity class="metric-icon" /><Badge label="+12%" variant="positive" /></div>
+          <p class="metric-value">98.7%</p>
+          <p class="metric-label">Fleet availability</p>
+        </Panel>
+        <Panel class="metric">
+          <div class="metric-head"><Cpu class="metric-icon" /><Badge label="stable" variant="secondary" /></div>
+          <p class="metric-value">42 ms</p>
+          <p class="metric-label">Median edge latency</p>
+        </Panel>
+        <Panel class="metric">
+          <div class="metric-head"><Database class="metric-icon" /><Badge label="hot" variant="primary" /></div>
+          <p class="metric-value">1.8 TB</p>
+          <p class="metric-label">Telemetry buffered</p>
+        </Panel>
+        <Panel class="metric">
+          <div class="metric-head"><TriangleAlert class="metric-icon" /><Badge label="2 alerts" variant="negative" /></div>
+          <p class="metric-value">7</p>
+          <p class="metric-label">Active escalations</p>
+        </Panel>
+      </div>
+
+      <div class="grid">
+        <div class="left-col">
+          <Panel class="card">
+            <div class="card-row">
+              <div class="stack">
+                <p class="section-title">Regional Signal Mesh</p>
+                <p class="muted">Live routing health across orbital, warehouse, and street-level uplinks</p>
+              </div>
+              <IconIndicator variant="good" />
+            </div>
+            <div class="system-map">
+              <div class="node"><Cloud class="node-icon" /></div>
+              <div class="node"><GitBranch class="node-icon" /></div>
+              <div class="node node-hot"><Zap class="node-icon" /></div>
+              <div class="node"><Lock class="node-icon" /></div>
+            </div>
+            <ProgressBar value="0.74" />
+          </Panel>
+
+          <Panel class="card">
+            <div class="card-row">
+              <p class="section-title">Deployment Readiness</p>
+              <Badge label="Gate 3 / 5" variant="primary" />
+            </div>
+            <ProgressBarStepper>
+              <ProgressBarStepperStep />
+              <ProgressBarStepperStep />
+              <ProgressBarStepperStep />
+              <ProgressBarStepperStep />
+            </ProgressBarStepper>
+            <div class="controls">
+              <div class="control-line"><p class="muted">Traffic canary</p><Slider value="38" min="0" max="100" step="1" /></div>
+              <div class="control-line"><p class="muted">Auto rollback</p><Toggle /></div>
+              <div class="control-line"><p class="muted">Require operator confirmation</p><Checkbox /></div>
+            </div>
+          </Panel>
+        </div>
+
+        <div class="right-col">
+          <Panel class="card">
+            <div class="card-row">
+              <p class="section-title">Command Search</p>
+              <Search class="event-icon" />
+            </div>
+            <div class="field-row">
+              <InputField class="input-shell" placeholder="Jump to node, mission, or alert" />
+            </div>
+            <Button variant="secondary" size="sm">Run Diagnostic</Button>
+          </Panel>
+
+          <Panel class="card timeline">
+            <div class="card-row">
+              <p class="section-title">Incident Feed</p>
+              <Bell class="event-icon" />
+            </div>
+            <div class="event">
+              <Check class="event-icon status-good" />
+              <div class="event-copy"><p class="event-title">Canary probe cleared</p><p class="event-time">18 seconds ago</p></div>
+            </div>
+            <div class="event">
+              <TriangleAlert class="event-icon status-warn" />
+              <div class="event-copy"><p class="event-title">Battery drift on node E-17</p><p class="event-time">2 minutes ago</p></div>
+            </div>
+            <div class="event">
+              <Eye class="event-icon" />
+              <div class="event-copy"><p class="event-title">Manual review opened</p><p class="event-time">9 minutes ago</p></div>
+            </div>
+            <div class="event">
+              <Clock3 class="event-icon" />
+              <div class="event-copy"><p class="event-title">Batch replay scheduled</p><p class="event-time">22 minutes ago</p></div>
+            </div>
+          </Panel>
+
+          <Panel class="card">
+            <div class="card-row"><p class="section-title">Operators</p><Badge label="4 online" variant="positive" /></div>
+            <div class="card-row"><Avatar size="sm" /><p class="muted">Mira Chen</p><CircleDot class="event-icon status-good" /></div>
+            <div class="card-row"><Avatar size="sm" /><p class="muted">Jon Bell</p><CircleDot class="event-icon status-good" /></div>
+            <div class="card-row"><Avatar size="sm" /><p class="muted">Rae Ito</p><CircleDot class="event-icon status-warn" /></div>
+          </Panel>
+        </div>
+      </div>
+    </div>
+  </div>
+</Panel>

@@ -1,0 +1,4 @@
+interface:
+  display_name: "UIKitML"
+  short_description: "Write, validate, render, and convert Drawcall UIKitML."
+  default_prompt: "Help me write UIKitML for a pmndrs/uikit interface."

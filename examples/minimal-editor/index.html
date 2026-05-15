@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UIKitML Minimal Editor</title>
+  </head>
+  <body>
+    <main id="app">
+      <section class="editor-pane" aria-label="UIKitML editor">
+        <header class="toolbar">
+          <label class="kit-select">
+            <span>Kit</span>
+            <select id="kit-select">
+              <option value="default">Default + Lucide</option>
+              <option value="horizon">Horizon + Lucide</option>
+            </select>
+          </label>
+          <span id="parse-status" class="parse-status">Ready</span>
+        </header>
+        <textarea id="source-editor" spellcheck="false" aria-label="UIKitML source"></textarea>
+        <aside id="error-panel" class="error-panel" aria-live="polite"></aside>
+      </section>
+      <section class="preview-pane" aria-label="Three.js UIKit preview">
+        <canvas id="preview-canvas"></canvas>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
