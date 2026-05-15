@@ -1,101 +1,51 @@
-# @drawcall/uikitml
+<p align="center">
+  <img src="./assets/uikitml-logo.png" alt="UIKitML logo" width="160" />
+</p>
 
-`@drawcall/uikitml` parses a strict HTML-like UIKitML subset into an AST, can generate UIKitML back from that AST, and can instantiate real `pmndrs/uikit` components when needed.
+# UIKitML
 
-## Workspace
-
-- `packages/uikitml` - parser, component sets, generator, tests
-- `examples/minimal-editor` - live UIKitML editor and Three.js preview
-
-## API Sketch
-
-```ts
-import { parse, generate, instantiate } from "@drawcall/uikitml";
-
-const result = parse(`
-  <style>
-    .card { background-color: #111827; padding: 12; }
-  </style>
-  <div class="card">
-    <h1>Hello UIKitML</h1>
-  </div>
-`);
-
-if (result.success) {
-  const markup = generate(result.ast);
-  const component = instantiate(result.ast);
-}
-```
-
-## CLI
-
-```sh
-uikitml validate '<div><Sparkles /></div>'
-uikitml render card.uikitml --width 800 --color-scheme dark --out card.png
-uikitml convert card.uikitml --name Card --color-scheme dark --out Card.tsx
-```
-
-`validate` prints a compact validation block and exits `0` for valid and invalid UIKitML:
-
-```text
-0 errors
-```
-
-```text
-2 errors
-3:12 unknown-component Unknown component <Foo>.
-5:20 invalid-property-name Invalid property name "backgroundColor" on element "<div>". Use "background-color".
-```
-
-Inputs are resolved as `-` for stdin, then an existing file path, otherwise inline source. Lucide icons and HTML-like tags are always available. The default kit is Shadcn-style; `--kit horizon` switches to the Meta Horizon iOS-style 3D/XR kit.
-
-Documents can pin kit theme-sensitive defaults with top-level metadata:
-
-```xml
-<meta preferred-color-scheme="dark" />
-```
-
-`render --color-scheme` and `convert --color-scheme` override that metadata when supplied.
-
-`render` writes a PNG file and prints:
-
-```text
-rendered card.png 742x318
-```
-
-`convert` writes React/UIKit TSX and prints:
-
-```text
-converted Card.tsx
-```
-
-## Agent Skill
-
-Install the UIKitML agent skill from this repository:
+Generate immersive 3D interfaces for Three.js, React Three Fiber, IWSDK, and
+more with HTML syntax. Perfect for AI workflows.
 
 ```sh
 npx skills add drawcall-ai/uikitml
 ```
 
-The skill lives in `skills/uikitml` and includes references for the default kit, Lucide icons, and Horizon kit.
+## What It Is
 
-## Current Notes
+UIKitML is a small HTML-like format for spatial UI. AI agents can write it,
+validate it, preview it, and turn it into real 3D interface code.
 
-- Unknown component tags are errors.
-- Component tag names are exact and case-sensitive.
-- Source property names in element markup and style declarations are kebab-case only and are converted to camelCase UIKit props.
-- Inline styles and stylesheet rule bodies use the same style declaration grammar and diagnostics.
-- Property values are preserved as authored strings; bare boolean element properties are represented as `true`.
-- `class` is parsed as a UIKit `classList` string array and `id` is passed through as a style hook.
-- `parse` returns an AST with source metadata and UIKit-shaped stylesheet data.
-- `instantiate` creates live UIKit components from the AST and does not perform schema validation.
-- Built-in component validation uses the Zod schemas exported by `@pmndrs/uikit`.
+```text
+prompt / Pencil design / .pen file
+  -> .uikitml
+  -> PNG preview
+  -> Three.js / React Three Fiber / IWSDK / more
+```
 
-## Commands
+Use it for AI-generated XR panels, dashboards, controls, and design-to-code
+workflows.
+
+## Why
+
+- Strict markup, so agents get clear errors.
+- Built-in Lucide, default, Horizon, and immersive UI references.
+- Works well with Pencil: inspect a design, generate UIKitML, render, compare, convert.
+
+## Quick Start
 
 ```sh
-pnpm install
-pnpm typecheck
-pnpm test
-pnpm build
+uikitml validate ./screen.uikitml --kit horizon
+uikitml render ./screen.uikitml --kit horizon --out screen.png
+uikitml convert ./screen.uikitml --kit horizon --name Screen --out Screen.tsx
+```
+
+
+Code:
+
+```ts
+import { parse, generate } from "@drawcall/uikitml";
+
+const result = parse("<div><h1>Hello XR</h1></div>");
+if (result.success) generate(result.ast);
 ```

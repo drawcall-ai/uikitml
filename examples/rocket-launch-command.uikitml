@@ -1,0 +1,838 @@
+<meta preferred-color-scheme="dark" />
+<style>
+  .screen {
+    width: 1440;
+    height: 960;
+    background-color: #070A0F;
+    position-type: relative;
+    overflow: hidden;
+    font-family: inter;
+  }
+
+  .grid-line-h {
+    position-type: absolute;
+    position-left: 0;
+    position-top: 72;
+    width: 1440;
+    height: 1;
+    background-color: #26384A;
+    opacity: 0.5;
+  }
+
+  .grid-line-left {
+    position-type: absolute;
+    position-left: 284;
+    position-top: 72;
+    width: 1;
+    height: 888;
+    background-color: #26384A;
+    opacity: 0.5;
+  }
+
+  .grid-line-right {
+    position-type: absolute;
+    position-left: 1080;
+    position-top: 72;
+    width: 1;
+    height: 888;
+    background-color: #26384A;
+    opacity: 0.5;
+  }
+
+  .header {
+    position-type: absolute;
+    position-left: 0;
+    position-top: 0;
+    width: 1440;
+    height: 72;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 28;
+    padding-right: 28;
+    background-color: #0A1018;
+    border-bottom-width: 1;
+    border-color: #26384A;
+  }
+
+  .brand {
+    flex-direction: row;
+    align-items: center;
+    gap: 14;
+  }
+
+  .brand-mark {
+    width: 34;
+    height: 34;
+    border-radius: 6;
+    background-color: #FF7A1A;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .brand-copy {
+    flex-direction: column;
+    gap: 2;
+  }
+
+  .brand-title {
+    color: #F5F7FA;
+    font-family: montserrat;
+    font-size: 24;
+    font-weight: 700;
+    letter-spacing: 1.4;
+  }
+
+  .brand-sub {
+    color: #8C9AAA;
+    font-family: fira-code;
+    font-size: 11;
+    font-weight: 600;
+    letter-spacing: 1;
+  }
+
+  .header-status {
+    flex-direction: row;
+    align-items: center;
+    gap: 10;
+  }
+
+  .pill {
+    height: 32;
+    flex-direction: row;
+    align-items: center;
+    gap: 8;
+    padding-left: 12;
+    padding-right: 12;
+    border-radius: 999;
+    border-width: 1;
+  }
+
+  .pill-orange {
+    background-color: #24190E;
+    border-color: #7A4818;
+  }
+
+  .pill-green {
+    background-color: #12261E;
+    border-color: #2D7E5B;
+  }
+
+  .dot {
+    width: 7;
+    height: 7;
+    border-radius: 999;
+  }
+
+  .orange-dot {
+    background-color: #FF7A1A;
+  }
+
+  .green-dot {
+    background-color: #64F4AC;
+  }
+
+  .pill-text {
+    font-family: fira-code;
+    font-size: 11;
+    font-weight: 800;
+    letter-spacing: 1;
+  }
+
+  .text-orange {
+    color: #FF7A1A;
+  }
+
+  .text-green {
+    color: #64F4AC;
+  }
+
+  .text-cyan {
+    color: #39D6FF;
+  }
+
+  .text-muted {
+    color: #8C9AAA;
+  }
+
+  .text-main {
+    color: #F5F7FA;
+  }
+
+  .header-countdown {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2;
+  }
+
+  .count-label {
+    color: #8C9AAA;
+    font-family: fira-code;
+    font-size: 10;
+    font-weight: 700;
+    letter-spacing: 1.4;
+  }
+
+  .count-main {
+    color: #39D6FF;
+    font-family: fira-code;
+    font-size: 26;
+    font-weight: 800;
+    letter-spacing: 1;
+  }
+
+  .sidebar {
+    position-type: absolute;
+    position-left: 24;
+    position-top: 96;
+    width: 236;
+    height: 822;
+    flex-direction: column;
+    gap: 14;
+    padding: 16;
+    background-color: #0B111ACC;
+    border-width: 1;
+    border-color: #26384A;
+    border-radius: 8;
+  }
+
+  .section-label {
+    color: #8C9AAA;
+    font-family: fira-code;
+    font-size: 11;
+    font-weight: 800;
+    letter-spacing: 1.2;
+  }
+
+  .nav-item {
+    height: 44;
+    flex-direction: row;
+    align-items: center;
+    gap: 10;
+    padding-left: 12;
+    padding-right: 12;
+    border-radius: 6;
+  }
+
+  .nav-active {
+    background-color: #132437;
+    border-width: 1;
+    border-color: #24506A;
+  }
+
+  .nav-text {
+    font-family: inter;
+    font-size: 14;
+    font-weight: 600;
+  }
+
+  .nav-active-text {
+    color: #F5F7FA;
+    font-weight: 700;
+  }
+
+  .divider {
+    height: 1;
+    background-color: #26384A;
+  }
+
+  .mission-card {
+    flex-direction: column;
+    gap: 10;
+    padding: 14;
+    background-color: #101722;
+    border-width: 1;
+    border-color: #26384A;
+    border-radius: 6;
+  }
+
+  .mission-title {
+    color: #F5F7FA;
+    font-family: montserrat;
+    font-size: 28;
+    font-weight: 700;
+    letter-spacing: 1;
+  }
+
+  .body-copy {
+    color: #8C9AAA;
+    font-family: inter;
+    font-size: 13;
+    line-height: 1.35;
+  }
+
+  .metric-list {
+    flex-direction: column;
+    gap: 8;
+  }
+
+  .metric-row {
+    height: 38;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .metric-key {
+    color: #8C9AAA;
+    font-family: fira-code;
+    font-size: 11;
+    font-weight: 700;
+  }
+
+  .metric-value {
+    font-family: fira-code;
+    font-size: 16;
+    font-weight: 800;
+  }
+
+  .abort-button {
+    height: 48;
+    align-items: center;
+    justify-content: center;
+    background-color: #210E12;
+    border-width: 1;
+    border-color: #67212A;
+    border-radius: 6;
+  }
+
+  .abort-text {
+    color: #FF6B78;
+    font-family: fira-code;
+    font-size: 12;
+    font-weight: 900;
+    letter-spacing: 1.2;
+  }
+
+  .main {
+    position-type: absolute;
+    position-left: 308;
+    position-top: 96;
+    width: 748;
+    height: 822;
+    flex-direction: column;
+    gap: 14;
+  }
+
+  .kpis {
+    height: 124;
+    flex-direction: row;
+    gap: 14;
+  }
+
+  .kpi-card {
+    width: 240;
+    height: 124;
+    flex-direction: column;
+    gap: 8;
+    padding: 16;
+    background-color: #0B111ACC;
+    border-width: 1;
+    border-color: #26384A;
+    border-radius: 8;
+  }
+
+  .kpi-label {
+    color: #8C9AAA;
+    font-family: fira-code;
+    font-size: 11;
+    font-weight: 800;
+    letter-spacing: 1.2;
+  }
+
+  .kpi-value {
+    color: #F5F7FA;
+    font-family: fira-code;
+    font-size: 30;
+    font-weight: 800;
+  }
+
+  .kpi-sub {
+    font-family: inter;
+    font-size: 13;
+  }
+
+  .trajectory {
+    width: 748;
+    height: 398;
+    position-type: relative;
+    overflow: hidden;
+    background-color: #08101A;
+    border-width: 1;
+    border-color: #26384A;
+    border-radius: 8;
+  }
+
+  .traj-title {
+    position-type: absolute;
+    position-left: 18;
+    position-top: 18;
+    color: #8C9AAA;
+    font-family: fira-code;
+    font-size: 12;
+    font-weight: 800;
+    letter-spacing: 1.3;
+  }
+
+  .traj-status {
+    position-type: absolute;
+    position-left: 522;
+    position-top: 18;
+    color: #39D6FF;
+    font-family: fira-code;
+    font-size: 12;
+    font-weight: 800;
+    letter-spacing: 1;
+  }
+
+  .orbit-wide {
+    position-type: absolute;
+    position-left: 92;
+    position-top: 76;
+    width: 560;
+    height: 236;
+    border-width: 1;
+    border-color: #39D6FF;
+    border-radius: 999;
+    opacity: 0.16;
+  }
+
+  .orbit-tight {
+    position-type: absolute;
+    position-left: 184;
+    position-top: 118;
+    width: 384;
+    height: 150;
+    border-width: 1;
+    border-color: #4B7BFF;
+    border-radius: 999;
+    opacity: 0.12;
+  }
+
+  .axis {
+    position-type: absolute;
+    position-left: 374;
+    position-top: 58;
+    width: 1;
+    height: 292;
+    background-color: #39D6FF;
+    opacity: 0.3;
+  }
+
+  .plume-cyan {
+    position-type: absolute;
+    position-left: 333;
+    position-top: 234;
+    width: 82;
+    height: 120;
+    border-radius: 999;
+    background-color: #39D6FF;
+    opacity: 0.6;
+  }
+
+  .plume-orange {
+    position-type: absolute;
+    position-left: 354;
+    position-top: 214;
+    width: 40;
+    height: 84;
+    border-radius: 999;
+    background-color: #FF7A1A;
+  }
+
+  .rocket-body {
+    position-type: absolute;
+    position-left: 356;
+    position-top: 120;
+    width: 36;
+    height: 94;
+    background-color: #F4F8FF;
+    border-width: 1;
+    border-color: #A7BED8;
+    border-radius: 18;
+  }
+
+  .rocket-nose {
+    position-type: absolute;
+    position-left: 356;
+    position-top: 104;
+    width: 36;
+    height: 36;
+    background-color: #E5EEF9;
+    border-radius: 999;
+  }
+
+  .rocket-mask {
+    position-type: absolute;
+    position-left: 356;
+    position-top: 122;
+    width: 36;
+    height: 18;
+    background-color: #F4F8FF;
+  }
+
+  .rocket-window {
+    position-type: absolute;
+    position-left: 368;
+    position-top: 150;
+    width: 12;
+    height: 12;
+    border-radius: 999;
+    background-color: #39D6FF;
+  }
+
+  .rocket-fin-left {
+    position-type: absolute;
+    position-left: 330;
+    position-top: 216;
+    width: 32;
+    height: 42;
+    background-color: #FF7A1A;
+    border-radius: 4;
+  }
+
+  .rocket-fin-right {
+    position-type: absolute;
+    position-left: 386;
+    position-top: 216;
+    width: 32;
+    height: 42;
+    background-color: #FF7A1A;
+    border-radius: 4;
+  }
+
+  .readouts {
+    position-type: absolute;
+    position-left: 18;
+    position-top: 304;
+    width: 712;
+    height: 76;
+    flex-direction: row;
+    gap: 10;
+  }
+
+  .readout {
+    width: 230;
+    height: 76;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4;
+    padding-left: 14;
+    background-color: #0B111ACC;
+    border-width: 1;
+    border-color: #24465C;
+    border-radius: 6;
+  }
+
+  .readout-label {
+    color: #8C9AAA;
+    font-family: fira-code;
+    font-size: 10;
+    font-weight: 800;
+  }
+
+  .readout-value {
+    font-family: fira-code;
+    font-size: 22;
+    font-weight: 800;
+  }
+
+  .ops-table {
+    width: 748;
+    height: 272;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: #0B111ACC;
+    border-width: 1;
+    border-color: #26384A;
+    border-radius: 8;
+  }
+
+  .table-row {
+    height: 57;
+    flex-direction: row;
+    align-items: center;
+    padding-left: 14;
+    padding-right: 14;
+    border-bottom-width: 1;
+    border-color: #1D3346;
+  }
+
+  .table-head {
+    height: 44;
+    background-color: #101722;
+  }
+
+  .table-last {
+    border-bottom-width: 0;
+  }
+
+  .cell-system {
+    width: 168;
+  }
+
+  .cell-state {
+    width: 170;
+  }
+
+  .cell-value {
+    width: 170;
+  }
+
+  .cell-trend {
+    width: 198;
+  }
+
+  .th {
+    color: #8C9AAA;
+    font-family: fira-code;
+    font-size: 11;
+    font-weight: 800;
+    letter-spacing: 1;
+  }
+
+  .td-main {
+    color: #F5F7FA;
+    font-family: inter;
+    font-size: 14;
+    font-weight: 700;
+  }
+
+  .td-code {
+    font-family: fira-code;
+    font-size: 13;
+    font-weight: 800;
+  }
+
+  .bar-track {
+    height: 8;
+    border-radius: 999;
+    background-color: #182332;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 8;
+    border-radius: 999;
+  }
+
+  .right-rail {
+    position-type: absolute;
+    position-left: 1104;
+    position-top: 96;
+    width: 312;
+    height: 822;
+    flex-direction: column;
+    gap: 14;
+  }
+
+  .rail-card {
+    width: 312;
+    flex-direction: column;
+    gap: 12;
+    padding: 16;
+    background-color: #0B111ACC;
+    border-width: 1;
+    border-color: #26384A;
+    border-radius: 8;
+  }
+
+  .action-card {
+    height: 144;
+  }
+
+  .launch-button {
+    height: 50;
+    align-items: center;
+    justify-content: center;
+    background-color: #FF7A1A;
+    border-radius: 6;
+  }
+
+  .launch-button-text {
+    color: #130905;
+    font-family: fira-code;
+    font-size: 13;
+    font-weight: 900;
+    letter-spacing: 1.1;
+  }
+
+  .health-card {
+    height: 294;
+  }
+
+  .health-row {
+    height: 44;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .health-name {
+    color: #F5F7FA;
+    font-family: inter;
+    font-size: 14;
+    font-weight: 700;
+  }
+
+  .health-value {
+    font-family: fira-code;
+    font-size: 18;
+    font-weight: 800;
+  }
+
+  .log-card {
+    width: 312;
+    height: 350;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: #0B111ACC;
+    border-width: 1;
+    border-color: #26384A;
+    border-radius: 8;
+  }
+
+  .log-head {
+    height: 44;
+    align-items: center;
+    padding-left: 16;
+    background-color: #101722;
+  }
+
+  .log-row {
+    height: 60;
+    flex-direction: column;
+    gap: 4;
+    padding-left: 16;
+    padding-right: 16;
+    padding-top: 8;
+    border-bottom-width: 1;
+    border-color: #1D3346;
+  }
+
+  .log-time {
+    font-family: fira-code;
+    font-size: 11;
+    font-weight: 800;
+  }
+
+  .log-text {
+    color: #F5F7FA;
+    font-family: inter;
+    font-size: 13;
+  }
+</style>
+
+<div class="screen">
+  <div class="grid-line-h"></div>
+  <div class="grid-line-left"></div>
+  <div class="grid-line-right"></div>
+
+  <div class="header">
+    <div class="brand">
+      <div class="brand-mark"><Rocket width="20" height="20" color="#130905" /></div>
+      <div class="brand-copy">
+        <span class="brand-title">LAUNCH OPS</span>
+        <span class="brand-sub">MISSION AURORA-7 / ORBIT INSERTION</span>
+      </div>
+    </div>
+    <div class="header-status">
+      <div class="pill pill-orange"><div class="dot orange-dot"></div><span class="pill-text text-orange">ARMED</span></div>
+      <div class="pill pill-green"><div class="dot green-dot"></div><span class="pill-text text-green">ALL SYSTEMS NOMINAL</span></div>
+    </div>
+    <div class="header-countdown">
+      <span class="count-label">COUNTDOWN</span>
+      <span class="count-main">T-00:42:18</span>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <span class="section-label">COMMAND</span>
+    <div class="nav-item nav-active"><Activity width="18" height="18" color="#39D6FF" /><span class="nav-text nav-active-text">Launch Console</span></div>
+    <div class="nav-item"><Radio width="18" height="18" color="#8C9AAA" /><span class="nav-text text-muted">Ground Links</span></div>
+    <div class="nav-item"><Route width="18" height="18" color="#8C9AAA" /><span class="nav-text text-muted">Trajectory</span></div>
+    <div class="nav-item"><ShieldCheck width="18" height="18" color="#8C9AAA" /><span class="nav-text text-muted">Abort Rules</span></div>
+    <div class="divider"></div>
+    <div class="mission-card">
+      <span class="section-label">MISSION PHASE</span>
+      <span class="mission-title">FINAL HOLD</span>
+      <span class="body-copy">Autonomous checks complete. Awaiting ignition clearance from flight director.</span>
+    </div>
+    <div class="metric-list">
+      <div class="metric-row"><span class="metric-key">LINK</span><span class="metric-value text-green">99.98%</span></div>
+      <div class="metric-row"><span class="metric-key">RANGE</span><span class="metric-value text-cyan">CLEAR</span></div>
+    </div>
+    <div class="abort-button"><span class="abort-text">ABORT SAFE</span></div>
+  </div>
+
+  <div class="main">
+    <div class="kpis">
+      <div class="kpi-card"><span class="kpi-label">ALTITUDE</span><span class="kpi-value">12.8 KM</span><span class="kpi-sub text-green">+0.42 km/s ascent</span></div>
+      <div class="kpi-card"><span class="kpi-label">VELOCITY</span><span class="kpi-value">2,941 M/S</span><span class="kpi-sub text-cyan">target corridor</span></div>
+      <div class="kpi-card"><span class="kpi-label">FUEL MASS</span><span class="kpi-value">78%</span><span class="kpi-sub text-green">nominal reserve</span></div>
+    </div>
+
+    <div class="trajectory">
+      <span class="traj-title">TRAJECTORY MONITOR</span>
+      <span class="traj-status">ASCENT VECTOR LOCKED</span>
+      <div class="orbit-wide"></div>
+      <div class="orbit-tight"></div>
+      <div class="axis"></div>
+      <div class="plume-cyan"></div>
+      <div class="plume-orange"></div>
+      <div class="rocket-fin-left"></div>
+      <div class="rocket-fin-right"></div>
+      <div class="rocket-body"></div>
+      <div class="rocket-nose"></div>
+      <div class="rocket-mask"></div>
+      <div class="rocket-window"></div>
+      <div class="readouts">
+        <div class="readout"><span class="readout-label">PITCH</span><span class="readout-value text-cyan">87.4 DEG</span></div>
+        <div class="readout"><span class="readout-label">APOGEE</span><span class="readout-value text-main">412 KM</span></div>
+        <div class="readout"><span class="readout-label">DRIFT</span><span class="readout-value text-green">0.03 DEG</span></div>
+      </div>
+    </div>
+
+    <div class="ops-table">
+      <div class="table-row table-head">
+        <span class="cell-system th">SYSTEM</span><span class="cell-state th">STATE</span><span class="cell-value th">VALUE</span><span class="cell-trend th">TREND</span>
+      </div>
+      <div class="table-row">
+        <span class="cell-system td-main">Main Engine</span><span class="cell-state td-code text-green">Ready</span><span class="cell-value td-code text-main">100%</span><div class="cell-trend bar-track"><div class="bar-fill" style="width: 192; background-color: #64F4AC"></div></div>
+      </div>
+      <div class="table-row">
+        <span class="cell-system td-main">Telemetry</span><span class="cell-state td-code text-cyan">Streaming</span><span class="cell-value td-code text-main">4.8 GB/S</span><div class="cell-trend bar-track"><div class="bar-fill" style="width: 168; background-color: #39D6FF"></div></div>
+      </div>
+      <div class="table-row">
+        <span class="cell-system td-main">Thermal</span><span class="cell-state td-code text-green">Stable</span><span class="cell-value td-code text-main">621 K</span><div class="cell-trend bar-track"><div class="bar-fill" style="width: 112; background-color: #64F4AC"></div></div>
+      </div>
+      <div class="table-row table-last">
+        <span class="cell-system td-main">Range Safety</span><span class="cell-state td-code text-cyan">Clear</span><span class="cell-value td-code text-main">GREEN</span><div class="cell-trend bar-track"><div class="bar-fill" style="width: 198; background-color: #39D6FF"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-rail">
+    <div class="rail-card action-card">
+      <span class="section-label">PRIMARY ACTION</span>
+      <div class="launch-button"><span class="launch-button-text">CLEAR IGNITION</span></div>
+      <span class="body-copy">Requires two-person confirmation</span>
+    </div>
+    <div class="rail-card health-card">
+      <span class="section-label">SYSTEM HEALTH</span>
+      <div class="health-row"><span class="health-name">Propulsion</span><span class="health-value text-green">98%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width: 250; background-color: #64F4AC"></div></div>
+      <div class="health-row"><span class="health-name">Comms</span><span class="health-value text-cyan">92%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width: 232; background-color: #39D6FF"></div></div>
+      <div class="health-row"><span class="health-name">Cryo Load</span><span class="health-value text-orange">81%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width: 204; background-color: #FF7A1A"></div></div>
+    </div>
+    <div class="log-card">
+      <div class="log-head"><span class="section-label">LIVE EVENT LOG</span></div>
+      <div class="log-row"><span class="log-time text-cyan">T-00:42:18</span><span class="log-text">Flight computer entered final hold.</span></div>
+      <div class="log-row"><span class="log-time text-green">T-00:44:02</span><span class="log-text">Range weather clearance received.</span></div>
+      <div class="log-row"><span class="log-time text-orange">T-00:47:29</span><span class="log-text">Cryogenic load pressure settling.</span></div>
+      <div class="log-row"><span class="log-time text-muted">T-00:51:10</span><span class="log-text">Telemetry recorders synchronized.</span></div>
+    </div>
+  </div>
+</div>
