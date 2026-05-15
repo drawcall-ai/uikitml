@@ -1,6 +1,6 @@
 ---
 name: uikitml
-description: Write, validate, render, and convert UIKitML for pmndrs/uikit interfaces. Use when working with .uikitml files, authoring 3D user interfaces, choosing default/Lucide/Horizon components, fixing UIKitML validation errors, or using the uikitml CLI.
+description: Write, validate, render, and convert UIKitML for pmndrs/uikit interfaces. Use when working with .uikitml files, authoring 3D user interfaces, choosing default/Lucide/Horizon components, fixing UIKitML validation errors, or using the @drawcall/uikitml CLI.
 ---
 
 # UIKitML
@@ -43,10 +43,20 @@ Lucide icons are always available as PascalCase self-closing tags, for example `
 
 ## CLI
 
+The CLI belongs to the `@drawcall/uikitml` package. Do not assume a globally installed CLI binary exists. In this repo, use the local built entrypoint:
+
 ```sh
-uikitml validate '<Card><Badge>Live</Badge></Card>'
-uikitml render card.uikitml --width 800 --height 600 --color-scheme dark --out card.png
-uikitml convert card.uikitml --name Card --color-scheme dark --out Card.tsx
+node packages/uikitml/dist/cli.js validate '<Card><Badge>Live</Badge></Card>'
+node packages/uikitml/dist/cli.js render card.uikitml --width 800 --height 600 --color-scheme dark --out card.png
+node packages/uikitml/dist/cli.js convert card.uikitml --name Card --color-scheme dark --out Card.tsx
+```
+
+When using an installed/resolvable package outside this repo, invoke the package by name:
+
+```sh
+npx @drawcall/uikitml validate '<Card><Badge>Live</Badge></Card>'
+npx @drawcall/uikitml render card.uikitml --width 800 --height 600 --color-scheme dark --out card.png
+npx @drawcall/uikitml convert card.uikitml --name Card --color-scheme dark --out Card.tsx
 ```
 
 Inputs resolve as stdin with `-`, then file path, then inline source. The default kit is selected by omitting `--kit`; use `--kit horizon` for the Meta Horizon iOS-style 3D/XR kit. Lucide icons and HTML tags are available either way.
