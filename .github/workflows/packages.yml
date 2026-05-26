@@ -1,0 +1,69 @@
+name: Publish Package
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org/
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check npm
+        run: npm --version
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Setup GitVersion
+        uses: gittools/actions/gitversion/setup@v0
+        with:
+          versionSpec: "5.x"
+
+      - name: GitVersion
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v0
+
+      - name: Typecheck
+        run: pnpm --filter "./packages/*" typecheck
+
+      - name: Test
+        run: pnpm --filter "./packages/*" test
+
+      - name: Build
+        run: pnpm --filter "./packages/*" build
+
+      - name: Set package version
+        working-directory: ./packages/uikitml
+        run: npm pkg set version="${{ steps.gitversion.outputs.fullSemVer }}"
+
+      - name: Copy README
+        run: cp README.md packages/uikitml/README.md
+
+      - name: Publish uikitml
+        working-directory: ./packages/uikitml
+        run: npm publish --access public --provenance --tag latest
