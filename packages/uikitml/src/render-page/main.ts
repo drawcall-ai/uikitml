@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { instantiate } from "../instantiate.js";
 import { resolveKitComponentSets, type KitName } from "../kits.js";
 import { parse } from "../parse.js";
+import { createRenderWrapperProps } from "../render-layout.js";
 import type { PreferredColorScheme, UIKitComponent } from "../types.js";
 
 type RenderPayload = {
@@ -34,7 +35,6 @@ camera.position.set(0, 0, 100);
 
 let currentRoot: UIKitComponent | undefined;
 let measuredSize: [number, number] | undefined;
-let measuredBounds: Bounds | undefined;
 
 window.uikitmlRender = {
   async measure(payload) {
@@ -47,14 +47,7 @@ window.uikitmlRender = {
       }
 
       replaceStyleSheet(result.ast.stylesheet);
-      const rootProps: Record<string, unknown> = { pixelSize: 1 };
-      if (payload.width != null) {
-        rootProps.width = payload.width;
-      }
-      if (payload.height != null) {
-        rootProps.height = payload.height;
-      }
-
+      const rootProps = createRenderWrapperProps(payload);
       const wrapper = new Container(rootProps) as UIKitComponent;
       wrapper.add(instantiate(result.ast, { componentSets, preferredColorScheme: payload.preferredColorScheme }));
       scene.add(wrapper);
@@ -63,7 +56,6 @@ window.uikitmlRender = {
 
       const size = await measureRoot(wrapper);
       measuredSize = [Math.ceil(size[0]), Math.ceil(size[1])];
-      measuredBounds = measureWorldBounds(wrapper);
       if (measuredSize[0] <= 0 || measuredSize[1] <= 0) {
         return { ok: false, error: "render measured an empty root" };
       }
@@ -75,23 +67,19 @@ window.uikitmlRender = {
 
   async render() {
     try {
-      if (currentRoot == null || measuredSize == null || measuredBounds == null) {
+      if (currentRoot == null || measuredSize == null) {
         return { ok: false, error: "render called before measure" };
       }
       resizeRenderer(measuredSize[0], measuredSize[1]);
-      const boundsWidth = Math.max(0.0001, measuredBounds.maxX - measuredBounds.minX);
-      const boundsHeight = Math.max(0.0001, measuredBounds.maxY - measuredBounds.minY);
-      const boundsCenterX = (measuredBounds.minX + measuredBounds.maxX) / 2;
-      const boundsCenterY = (measuredBounds.minY + measuredBounds.maxY) / 2;
       camera = new THREE.OrthographicCamera(
-        -boundsWidth / 2,
-        boundsWidth / 2,
-        boundsHeight / 2,
-        -boundsHeight / 2,
+        -measuredSize[0] / 2,
+        measuredSize[0] / 2,
+        measuredSize[1] / 2,
+        -measuredSize[1] / 2,
         -1000,
         1000,
       );
-      camera.position.set(boundsCenterX, boundsCenterY, 100);
+      camera.position.set(0, 0, 100);
       camera.updateProjectionMatrix();
 
       await settleRoot(currentRoot);
@@ -169,7 +157,6 @@ function clearCurrentRoot() {
   disposeComponentTree(currentRoot);
   currentRoot = undefined;
   measuredSize = undefined;
-  measuredBounds = undefined;
 }
 
 function disposeComponentTree(root: UIKitComponent) {
@@ -187,72 +174,6 @@ function disposeComponentTree(root: UIKitComponent) {
 
 function nextFrame() {
   return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-}
-
-type Bounds = {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-};
-
-function measureWorldBounds(root: UIKitComponent): Bounds {
-  const bounds: Bounds = {
-    minX: Number.POSITIVE_INFINITY,
-    minY: Number.POSITIVE_INFINITY,
-    maxX: Number.NEGATIVE_INFINITY,
-    maxY: Number.NEGATIVE_INFINITY,
-  };
-  let isFirstComponent = true;
-
-  root.traverse((object) => {
-    if (!(object instanceof Component)) {
-      return;
-    }
-    if (isFirstComponent) {
-      isFirstComponent = false;
-      return;
-    }
-    const size = object.size.value;
-    const matrix = object.globalMatrix.value;
-    if (size == null || matrix == null) {
-      return;
-    }
-    const pixelSize = parsePixelSize(object.properties.value.pixelSize);
-    const halfWidth = (size[0] * pixelSize) / 2;
-    const halfHeight = (size[1] * pixelSize) / 2;
-    includePoint(bounds, matrix, -halfWidth, -halfHeight);
-    includePoint(bounds, matrix, halfWidth, -halfHeight);
-    includePoint(bounds, matrix, halfWidth, halfHeight);
-    includePoint(bounds, matrix, -halfWidth, halfHeight);
-  });
-
-  if (!Number.isFinite(bounds.minX) || !Number.isFinite(bounds.minY)) {
-    throw new Error("render could not measure world bounds");
-  }
-
-  return bounds;
-}
-
-function includePoint(bounds: Bounds, matrix: THREE.Matrix4, x: number, y: number) {
-  const point = new THREE.Vector3(x, y, 0).applyMatrix4(matrix);
-  bounds.minX = Math.min(bounds.minX, point.x);
-  bounds.minY = Math.min(bounds.minY, point.y);
-  bounds.maxX = Math.max(bounds.maxX, point.x);
-  bounds.maxY = Math.max(bounds.maxY, point.y);
-}
-
-function parsePixelSize(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === "string") {
-    const parsed = Number.parseFloat(value);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-  return 1;
 }
 
 declare global {
