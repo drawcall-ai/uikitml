@@ -1,8 +1,9 @@
 import { encodeHTML } from "entities";
 import { camelToKebab } from "./names.js";
+import { formatStylesheetSection, stylesheetSectionNames } from "./style-sections.js";
 import type { RetainedStylesheet, UIKitMLAst, UIKitMLNode } from "./types.js";
 
-const conditionalNames = new Set(["hover", "active", "focus", "sm", "md", "lg", "xl", "2xl"]);
+const stylesheetSections = new Set<string>(stylesheetSectionNames);
 
 export function generate(ast: UIKitMLAst): string {
   const metadata = generateMetadata(ast);
@@ -93,15 +94,15 @@ function pushStyleRules(rules: string[], selector: string, content: Record<strin
       rules.push(`${selector} > * { ${generateDeclarationList(value as Record<string, unknown>)} }`);
       continue;
     }
-    if (conditionalNames.has(property)) {
+    if (stylesheetSections.has(property)) {
       const conditional = { ...(value as Record<string, unknown>) };
       const star = conditional["*"];
       delete conditional["*"];
       if (Object.keys(conditional).length > 0) {
-        rules.push(`${selector}:${property} { ${generateDeclarationList(conditional)} }`);
+        rules.push(`${selector}:${formatStylesheetSection(property)} { ${generateDeclarationList(conditional)} }`);
       }
       if (star != null) {
-        rules.push(`${selector}:${property} > * { ${generateDeclarationList(star as Record<string, unknown>)} }`);
+        rules.push(`${selector}:${formatStylesheetSection(property)} > * { ${generateDeclarationList(star as Record<string, unknown>)} }`);
       }
       continue;
     }

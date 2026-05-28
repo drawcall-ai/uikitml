@@ -1,13 +1,12 @@
 import { z } from "zod";
 import { formatInvalidPropertyNameMessage, isKebabPropertyName, kebabToCamel } from "./names.js";
+import { normalizeStylesheetSection } from "./style-sections.js";
 import type {
   RetainedStylesheet,
   SourceRange,
   StylesheetRangeInfo,
   UIKitMLError,
 } from "./types.js";
-
-const supportedConditionals = new Set(["hover", "active", "focus", "sm", "md", "lg", "xl", "2xl"]);
 
 type CssRule = {
   selector: string;
@@ -99,17 +98,19 @@ export function parseStylesheet(
   const stylesheet: RetainedStylesheet = {};
   const errors: UIKitMLError[] = [];
   const ranges: StylesheetRangeInfo = { blocks: [], rules: [] };
-  const rules = extractRules(css, contentRange);
+  const extracted = extractRules(css, contentRange);
+  const rules = extracted.rules;
+  errors.push(...extracted.errors);
 
   for (const rule of rules) {
     const parsedSelector = parseSelector(rule.selector);
     const declarationRanges = new Map<string, SourceRange>();
     ranges.rules.push({ selector: rule.selectorRange, declarations: declarationRanges });
 
-    if (parsedSelector == null) {
+    if (!parsedSelector.ok) {
       errors.push({
         code: "invalid-stylesheet",
-        message: `Unsupported stylesheet selector "${rule.selector}".`,
+        message: parsedSelector.message,
         range: rule.selectorRange,
       });
       continue;
@@ -143,14 +144,15 @@ export function parseStylesheet(
       }
     }
 
-    const className = parsedSelector.kind === "id" ? `__id__${parsedSelector.name}` : parsedSelector.name;
+    const selector = parsedSelector.selector;
+    const className = selector.kind === "id" ? `__id__${selector.name}` : selector.name;
     stylesheet[className] ??= {};
     let target = stylesheet[className];
-    if (parsedSelector.conditional != null) {
-      target[parsedSelector.conditional] ??= {};
-      target = target[parsedSelector.conditional] as Record<string, unknown>;
+    if (selector.conditional != null) {
+      target[selector.conditional] ??= {};
+      target = target[selector.conditional] as Record<string, unknown>;
     }
-    if (parsedSelector.star) {
+    if (selector.star) {
       target["*"] ??= {};
       target = target["*"] as Record<string, unknown>;
     }
@@ -299,21 +301,32 @@ function formatValue(value: unknown): string {
 }
 
 function parseSelector(selector: string):
-  | { kind: "class" | "id"; name: string; conditional?: string; star: boolean }
-  | undefined {
-  const match = /^([.#])([A-Za-z_][\w-]*)(?::([A-Za-z0-9_-]+))?(?:\s*>\s*\*)?$/.exec(selector);
+  | { ok: true; selector: { kind: "class" | "id"; name: string; conditional?: string; star: boolean } }
+  | { ok: false; message: string } {
+  const match = /^([.#])([A-Za-z_][A-Za-z0-9_-]*)(?::([A-Za-z0-9_-]+))?(?:\s*>\s*\*)?$/.exec(selector);
   if (match == null) {
-    return undefined;
+    return {
+      ok: false,
+      message: `Unsupported stylesheet selector "${selector}". Expected ".class", "#id", an optional conditional, and optional "> *".`,
+    };
   }
-  const conditional = match[3];
-  if (conditional != null && !supportedConditionals.has(conditional)) {
-    return undefined;
+  const rawSection = match[3];
+  const conditional = rawSection == null ? undefined : normalizeStylesheetSection(rawSection);
+  if (rawSection != null && conditional == null) {
+    return {
+      ok: false,
+      message: `Unsupported stylesheet section "${rawSection}" on selector "${selector}".`,
+    };
   }
+
   return {
-    kind: match[1] === "#" ? "id" : "class",
-    name: match[2],
-    conditional,
-    star: />\s*\*$/.test(selector),
+    ok: true,
+    selector: {
+      kind: match[1] === "#" ? "id" : "class",
+      name: match[2],
+      conditional,
+      star: />\s*\*$/.test(selector),
+    },
   };
 }
 
@@ -342,21 +355,62 @@ function positionInCss(css: string, contentRange: SourceRange, offset: number) {
   };
 }
 
-function extractRules(css: string, contentRange: SourceRange): CssRule[] {
+function extractRules(css: string, contentRange: SourceRange): { rules: CssRule[]; errors: UIKitMLError[] } {
   const rules: CssRule[] = [];
-  const regex = /([^{}]+)\{([^{}]*)\}/g;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(css)) != null) {
-    const selectorText = match[1].trim();
-    const leading = match[1].indexOf(selectorText);
-    const selectorStart = match.index + leading;
+  const errors: UIKitMLError[] = [];
+  const rulePattern = /([^{}]+)\{([^{}]*)\}/g;
+  let consumedEnd = 0;
+
+  for (const match of css.matchAll(rulePattern)) {
+    const matchStart = match.index ?? 0;
+    reportUnparsedCss(css, contentRange, consumedEnd, matchStart, errors);
+
+    const rawSelector = match[1];
+    const selectorText = rawSelector.trim();
+    const openBrace = matchStart + match[0].indexOf("{");
+    if (selectorText.length === 0) {
+      errors.push({
+        code: "invalid-stylesheet",
+        message: "Expected a stylesheet selector before declaration block.",
+        range: rangeInCss(css, contentRange, matchStart, openBrace + 1),
+      });
+      consumedEnd = matchStart + match[0].length;
+      continue;
+    }
+
+    const selectorStart = matchStart + rawSelector.indexOf(selectorText);
     const selectorEnd = selectorStart + selectorText.length;
     rules.push({
       selector: selectorText,
       body: match[2],
       selectorRange: rangeInCss(css, contentRange, selectorStart, selectorEnd),
-      bodyStartInCss: match.index + match[1].length + 1,
+      bodyStartInCss: openBrace + 1,
     });
+    consumedEnd = matchStart + match[0].length;
   }
-  return rules;
+
+  reportUnparsedCss(css, contentRange, consumedEnd, css.length, errors);
+
+  return { rules, errors };
+}
+
+function reportUnparsedCss(
+  css: string,
+  contentRange: SourceRange,
+  start: number,
+  end: number,
+  errors: UIKitMLError[],
+) {
+  const unparsed = css.slice(start, end);
+  if (unparsed.trim().length === 0) {
+    return;
+  }
+  const leading = unparsed.search(/\S/);
+  const errorStart = start + leading;
+  const trailing = unparsed.length - unparsed.trimEnd().length;
+  errors.push({
+    code: "invalid-stylesheet",
+    message: "Invalid stylesheet syntax. Expected a selector followed by a declaration block.",
+    range: rangeInCss(css, contentRange, errorStart, end - trailing),
+  });
 }

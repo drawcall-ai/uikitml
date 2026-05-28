@@ -313,6 +313,66 @@ describe("parse", () => {
     });
   });
 
+  it("retains UIKit dark conditional styles", () => {
+    const result = parse('<style>.heading:dark { color: white; }</style><div />');
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    expect(result.ast.stylesheet.heading).toMatchObject({
+      dark: { color: "white" },
+    });
+    expect(generate(result.ast)).toContain(".heading:dark { color: white }");
+  });
+
+  it("retains UIKit stylesheet layer sections", () => {
+    const result = parse(`
+      <style>
+        .field:placeholder-style { color: gray; }
+        .field:important { opacity: 1; }
+      </style>
+      <div />
+    `);
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+    expect(result.ast.stylesheet.field).toMatchObject({
+      placeholderStyle: { color: "gray" },
+      important: { opacity: "1" },
+    });
+    expect(generate(result.ast)).toContain(".field:placeholder-style { color: gray }");
+    expect(generate(result.ast)).toContain(".field:important { opacity: 1 }");
+  });
+
+  it("reports unsupported stylesheet conditionals", () => {
+    const result = parse('<style>.heading:pressed { color: white; }</style><div />');
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.errors[0]?.code).toBe("invalid-stylesheet");
+    expect(result.errors[0]?.message).toBe(
+      'Unsupported stylesheet section "pressed" on selector ".heading:pressed".',
+    );
+  });
+
+  it("reports malformed stylesheet text that cannot be parsed as rules", () => {
+    const result = parse("<style>.good { color: red; } .bad color: blue; </style><div />");
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+    expect(result.errors[0]?.code).toBe("invalid-stylesheet");
+    expect(result.errors[0]?.message).toBe(
+      "Invalid stylesheet syntax. Expected a selector followed by a declaration block.",
+    );
+  });
+
   it("requires explicit closing or self-closing syntax", () => {
     const result = parse('<img src="photo.png">');
 
