@@ -5,6 +5,7 @@ import { Command, CommanderError, Option } from "commander";
 import { parse } from "./parse.js";
 import { CliError, parseDimension, printValidationErrors, readInput, type InputSource } from "./cli-utils.js";
 import { convertToReact } from "./convert-react.js";
+import { convertToThree } from "./convert-three.js";
 import { renderToPng } from "./render.js";
 import { resolveKitComponentSets, type KitName } from "./kits.js";
 import type { PreferredColorScheme } from "./types.js";
@@ -69,9 +70,7 @@ program
   .option("--name <name>")
   .option("--out <path>")
   .action(async (input: string, options: KitOptions & { colorScheme?: PreferredColorScheme; to: string; name?: string; out?: string }) => {
-    if (options.to !== "react") {
-      throw new CliError(`unknown target "${options.to}"; expected "react"`);
-    }
+    const target = parseConvertTarget(options.to);
 
     const source = await readInput(input);
     const componentSets = resolveKitComponentSets(options.kit);
@@ -82,12 +81,19 @@ program
     }
 
     const componentName = options.name ?? defaultComponentName(source);
-    const out = options.out ?? defaultConvertOutPath(source);
-    const code = convertToReact(result.ast, {
-      componentName,
-      componentSets,
-      preferredColorScheme: options.colorScheme,
-    });
+    const out = options.out ?? defaultConvertOutPath(source, target);
+    const code =
+      target === "react"
+        ? convertToReact(result.ast, {
+            componentName,
+            componentSets,
+            preferredColorScheme: options.colorScheme,
+          })
+        : convertToThree(result.ast, {
+            functionName: componentName,
+            componentSets,
+            preferredColorScheme: options.colorScheme,
+          });
     await writeFile(out, code, "utf8");
     console.log(`converted ${out}`);
   });
@@ -123,11 +129,30 @@ function defaultRenderOutPath(source: InputSource): string {
   return "uikitml-render.png";
 }
 
-function defaultConvertOutPath(source: InputSource): string {
-  if (source.kind === "file") {
-    return replaceExtension(source.path, ".tsx");
+type ConvertTarget = "react" | "three";
+
+function parseConvertTarget(target: string): ConvertTarget {
+  switch (target.toLowerCase()) {
+    case "react":
+      return "react";
+    case "three":
+    case "threejs":
+    case "raw-threejs":
+    case "vanilla":
+    case "vanilla-three":
+    case "vanilla-threejs":
+      return "three";
+    default:
+      throw new CliError(`unknown target "${target}"; expected "react" or "three"`);
   }
-  return "UI.tsx";
+}
+
+function defaultConvertOutPath(source: InputSource, target: ConvertTarget): string {
+  const extension = target === "react" ? ".tsx" : ".ts";
+  if (source.kind === "file") {
+    return replaceExtension(source.path, extension);
+  }
+  return `UI${extension}`;
 }
 
 function defaultComponentName(source: InputSource): string {

@@ -2,6 +2,7 @@ export { parse } from "./parse.js";
 export { generate } from "./generate.js";
 export { instantiate } from "./instantiate.js";
 export { convertToReact, type ConvertReactOptions } from "./convert-react.js";
+export { convertToThree, type ConvertThreeOptions } from "./convert-three.js";
 export { renderToPng, type RenderResult, type RenderToPngOptions } from "./render.js";
 export { htmlComponentSet } from "./component-sets.js";
 export { horizonComponentSet, lucideComponentSet, resolveKitComponentSets } from "./kits.js";

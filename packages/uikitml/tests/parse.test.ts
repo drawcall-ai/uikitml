@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
   convertToReact,
+  convertToThree,
   generate,
   htmlComponentSet,
   instantiate,
@@ -475,6 +476,39 @@ describe("parse", () => {
     expect(convertToReact(result.ast, { componentName: "UI" })).toContain(
       'setPreferredColorScheme("dark");',
     );
+  });
+
+  it("converts to vanilla Three.js uikit code", () => {
+    const result = parse(`
+      <meta preferred-color-scheme="dark" />
+      <style>
+        .card { background-color: blue; }
+      </style>
+      <div class="card" size-x="8" size-y="4">
+        <h1>Hello</h1>
+      </div>
+    `);
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    const three = convertToThree(result.ast, { functionName: "createCard" });
+
+    expect(three).toContain('import { computed } from "@preact/signals-core";');
+    expect(three).toContain('import { Container, StyleSheet, Text, reversePainterSortStable, setPreferredColorScheme } from "@pmndrs/uikit";');
+    expect(three).toContain('import type { WebGLRenderer } from "three";');
+    expect(three).toContain('setPreferredColorScheme("dark");');
+    expect(three).toContain("Object.assign(StyleSheet,");
+    expect(three).toContain("export function createCard() {");
+    expect(three).toContain("  const root = new Container(");
+    expect(three).toContain("  const element1 = new Container(");
+    expect(three).toContain('  const text2 = createTextComponent("Hello");');
+    expect(three).toContain("  root.add(element1);");
+    expect(three).toContain("export function configureUIKitRenderer(renderer: WebGLRenderer) {");
+    expect(three).toContain("  renderer.localClippingEnabled = true;");
+    expect(three).toContain("  renderer.setTransparentSort(reversePainterSortStable);");
   });
 
   it("injects font family data for interpreted and converted documents", () => {

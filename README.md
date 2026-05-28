@@ -38,6 +38,7 @@ workflows.
 uikitml validate ./screen.uikitml --kit horizon
 uikitml render ./screen.uikitml --kit horizon --out screen.png
 uikitml convert ./screen.uikitml --kit horizon --name Screen --out Screen.tsx
+uikitml convert ./screen.uikitml --to three --kit horizon --name createScreen --out screen.ts
 ```
 
 

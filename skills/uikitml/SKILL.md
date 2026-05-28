@@ -1,6 +1,6 @@
 ---
 name: uikitml
-description: Write, validate, render, and convert UIKitML for pmndrs/uikit interfaces. Use when working with .uikitml files, authoring 3D user interfaces, choosing default/Lucide/Horizon components, fixing UIKitML validation errors, or using the @drawcall/uikitml CLI.
+description: Write, validate, render, and convert UIKitML for pmndrs/uikit interfaces. Use when working with .uikitml files, authoring 3D user interfaces, targeting Three.js, @react-three/fiber, or IWSDK, choosing default/Lucide/Horizon components, fixing UIKitML validation errors, or using the @drawcall/uikitml CLI.
 ---
 
 # UIKitML
@@ -49,6 +49,7 @@ The CLI belongs to the `@drawcall/uikitml` package. Do not assume a globally ins
 node packages/uikitml/dist/cli.js validate '<Card><Badge>Live</Badge></Card>'
 node packages/uikitml/dist/cli.js render card.uikitml --width 800 --height 600 --color-scheme dark --out card.png
 node packages/uikitml/dist/cli.js convert card.uikitml --name Card --color-scheme dark --out Card.tsx
+node packages/uikitml/dist/cli.js convert card.uikitml --to three --name createCard --out card.ts
 ```
 
 When using an installed/resolvable package outside this repo, invoke the package by name:
@@ -57,11 +58,14 @@ When using an installed/resolvable package outside this repo, invoke the package
 npx @drawcall/uikitml validate '<Card><Badge>Live</Badge></Card>'
 npx @drawcall/uikitml render card.uikitml --width 800 --height 600 --color-scheme dark --out card.png
 npx @drawcall/uikitml convert card.uikitml --name Card --color-scheme dark --out Card.tsx
+npx @drawcall/uikitml convert card.uikitml --to three --name createCard --out card.ts
 ```
 
 Inputs resolve as stdin with `-`, then file path, then inline source. The default kit is selected by omitting `--kit`; use `--kit horizon` for the Meta Horizon iOS-style 3D/XR kit. Lucide icons and HTML tags are available either way.
 
 `validate` prints diagnostics and exits 0 for valid or invalid UIKitML. CLI/runtime failures print `error ...` and exit nonzero.
+
+Conversion targets: default `convert` emits @react-three/fiber code; `convert --to three` emits raw Three.js code. IWSDK consumes `.uikitml` files directly, so no conversion is needed there.
 
 ## References
 
