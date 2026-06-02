@@ -6,6 +6,7 @@ import { parse } from "./parse.js";
 import { CliError, parseDimension, printValidationErrors, readInput, type InputSource } from "./cli-utils.js";
 import { convertToReact } from "./convert-react.js";
 import { convertToThree } from "./convert-three.js";
+import { sendFeedback } from "./feedback.js";
 import { renderToPng } from "./render.js";
 import { resolveKitComponentSets, type KitName } from "./kits.js";
 import type { PreferredColorScheme } from "./types.js";
@@ -98,6 +99,15 @@ program
     console.log(`converted ${out}`);
   });
 
+program
+  .command("feedback")
+  .argument("<text>")
+  .description("Send feedback about UIKitML to the maintainers")
+  .action(async (text: string) => {
+    const eventId = await sendFeedback(text);
+    console.log(`feedback sent ${eventId}`);
+  });
+
 try {
   await program.parseAsync(process.argv);
 } catch (error) {
@@ -106,6 +116,9 @@ try {
     process.exit(error.exitCode);
   }
   if (error instanceof CommanderError) {
+    if (error.code === "commander.helpDisplayed") {
+      process.exit(0);
+    }
     console.error(`error ${error.message.replace(/^error:\s*/, "")}`);
     process.exit(error.exitCode);
   }
