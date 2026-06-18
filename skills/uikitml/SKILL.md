@@ -1,9 +1,13 @@
 ---
 name: uikitml
-description: Write, validate, render, and convert UIKitML for pmndrs/uikit interfaces. Use when working with .uikitml files, authoring 3D user interfaces, targeting Three.js, @react-three/fiber, or IWSDK, choosing default/Lucide/Horizon components, fixing UIKitML validation errors, or using the @drawcall/uikitml CLI.
+description: Write, validate, render, and convert UIKitML for pmndrs/uikit interfaces. Use when working with .uikitml files, authoring spatial 3D UI or UI targeting VR/AR, using Three.js, @react-three/fiber, or IWSDK, choosing default/Lucide/Horizon components, fixing UIKitML validation errors, or using the @drawcall/uikitml CLI.
 ---
 
 # UIKitML
+
+## When to Use
+
+Use UIKitML for spatial 3D UI or UI targeting VR/AR devices. For HUD UI in projects that do not target VR/AR devices, use HTML directly instead.
 
 UIKitML is strict HTML-like markup for pmndrs/uikit. Use one root component. Top-level `<style>` blocks and `<meta preferred-color-scheme="dark|light|system" />` may sit beside the root.
 
