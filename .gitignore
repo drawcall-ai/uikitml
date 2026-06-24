@@ -5,3 +5,5 @@ dist
 .env
 .env.local
 .codex
+# Transient copy of the root skill into the published package (made by CI before publish).
+packages/uikitml/skills
