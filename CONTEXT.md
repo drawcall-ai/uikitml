@@ -68,6 +68,14 @@ _Avoid_: Fragment, document root
 A `<style>` element that defines reusable UIKitML class and ID styles from any position in the UIKitML source.
 _Avoid_: Component node
 
+**Font Face Declaration**:
+A CSS-style `@font-face` rule in a **Stylesheet Block** that gives one runtime `.ttf` source a family name and weight.
+_Avoid_: Bundled font import, browser font face
+
+**Runtime TTF Family**:
+One or more **Font Face Declarations** sharing a family name, converted on demand to UIKit's MSDF font-family data.
+_Avoid_: Web font, system font
+
 **Stylesheet Selector**:
 A supported UIKitML style selector, including class selectors, ID selectors, supported pseudo selectors, and direct-child wildcard selectors.
 _Avoid_: Full CSS selector
@@ -177,6 +185,7 @@ _Avoid_: Browser-recovered missing close tag
 
 - **UIKitML** parses into a **Parse Result**.
 - UIKitML uses a **Nearley Parser** rather than a browser-compatible HTML parser.
+- A **Runtime TTF Family** is available to `font-family` validation throughout the document, regardless of where its **Font Face Declaration** appears.
 - Any component may be written as a **Self-Closing Element**.
 - Components that cannot have children may also use explicit empty open and close tags.
 - Every non-self-closing element must have a matching close tag; bare HTML void syntax is invalid.

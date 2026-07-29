@@ -1,45 +1,15 @@
-import { instantiate, parse, type ComponentSet, type ParseFailure, type UIKitComponent } from "@drawcall/uikitml";
+import {
+  instantiate,
+  parse,
+  type ComponentSet,
+  type ParseFailure,
+} from "@drawcall/uikitml";
 import { Component, reversePainterSortStable, StyleSheet } from "@pmndrs/uikit";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import defaultSource from "./default.uikitml?raw";
 import { horizonComponentSet, lucideComponentSet } from "./kits.js";
 import "./styles.css";
-
-const defaultSource = `<style>
-  .card {
-    background-color: #111827;
-    border-radius: 20;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .row {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .icon {
-    color: #38bdf8;
-  }
-
-  .title {
-    color: white;
-    font-size: 28;
-    font-weight: bold;
-  }
-
-  .copy {
-    color: #cbd5e1;
-    font-size: 15;
-  }
-</style>
-<div class="card">
-  <div class="row">
-    <Sparkles class="icon" />
-    <h2 class="title">UIKitML</h2>
-  </div>
-  <p class="copy">Strict markup into live pmndrs/uikit components.</p>
-</div>`;
 
 const editor = queryRequired<HTMLTextAreaElement>("#source-editor");
 const errorPanel = queryRequired<HTMLElement>("#error-panel");
@@ -64,7 +34,7 @@ controls.enableDamping = true;
 controls.target.set(0, 0, 0);
 
 const clock = new THREE.Clock();
-let currentRoot: UIKitComponent | undefined;
+let currentRoot: Component | undefined;
 let parseTimer: number | undefined;
 
 window.addEventListener("resize", resizeRenderer);
@@ -144,15 +114,15 @@ function clearCurrentRoot() {
   currentRoot = undefined;
 }
 
-function disposeComponentTree(root: UIKitComponent) {
-  const disposable: UIKitComponent[] = [];
+function disposeComponentTree(root: Component) {
+  const dispose: Array<() => void> = [];
   root.traverse((object) => {
     if (object instanceof Component) {
-      disposable.push(object as UIKitComponent);
+      dispose.push(() => object.dispose());
     }
   });
-  for (const component of disposable.reverse()) {
-    component.dispose();
+  for (const disposeComponent of dispose.reverse()) {
+    disposeComponent();
   }
 }
 
@@ -163,7 +133,7 @@ function replaceStyleSheet(stylesheet: Record<string, Record<string, unknown>>) 
   Object.assign(StyleSheet, stylesheet);
 }
 
-function resolveRetainedClassLists(root: UIKitComponent) {
+function resolveRetainedClassLists(root: Component) {
   root.traverse((object) => {
     if (!(object instanceof Component)) {
       return;

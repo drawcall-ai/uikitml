@@ -1,24 +1,27 @@
 import { computed } from "@preact/signals-core";
-import { setPreferredColorScheme, Text } from "@pmndrs/uikit";
+import { setPreferredColorScheme, Text, type Component } from "@pmndrs/uikit";
 import { resolveComponentRegistry } from "./component-sets.js";
-import { addFontFamiliesToProps, collectFontFamilies, type UIKitMLFontFamily } from "./fonts.js";
-import type { InstantiateOptions, UIKitComponent, UIKitMLAst, UIKitMLNode } from "./types.js";
+import { addFontFamiliesToProps, collectFonts, type CollectedFonts } from "./fonts.js";
+import type {
+  InstantiateOptions,
+  UIKitMLAst,
+  UIKitMLNode,
+} from "./types.js";
 
-export function instantiate(ast: UIKitMLAst, options: InstantiateOptions = {}): UIKitComponent {
+export function instantiate(ast: UIKitMLAst, options: InstantiateOptions = {}): Component {
   const preferredColorScheme = options.preferredColorScheme ?? ast.metadata.preferredColorScheme;
   if (preferredColorScheme != null) {
     setPreferredColorScheme(preferredColorScheme);
   }
   const registry = resolveComponentRegistry(options.componentSets, options.includeHtmlComponentSet);
-  return instantiateNode(ast.root, registry, collectFontFamilies(ast), true);
+  return instantiateNode(ast.root, registry, collectFonts(ast));
 }
 
 function instantiateNode(
   node: UIKitMLNode,
   registry: ReturnType<typeof resolveComponentRegistry>,
-  fontFamilies: readonly UIKitMLFontFamily[],
-  isRoot = false,
-): UIKitComponent {
+  fonts?: CollectedFonts,
+): Component {
   if (node.kind === "text") {
     return createTextComponent(node.value);
   }
@@ -30,13 +33,13 @@ function instantiateNode(
 
   const props = { ...definition.defaults, ...node.props };
   const component = new definition.component(
-    isRoot ? addFontFamiliesToProps(props, fontFamilies) : props,
+    fonts == null ? props : addFontFamiliesToProps(props, fonts),
     node.classList,
   );
 
   if (node.kind === "element") {
     for (const child of node.children) {
-      component.add(instantiateNode(child, registry, fontFamilies));
+      component.add(instantiateNode(child, registry));
     }
   }
 

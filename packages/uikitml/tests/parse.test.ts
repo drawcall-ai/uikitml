@@ -179,6 +179,98 @@ describe("parse", () => {
     }
   });
 
+  it("supports CSS @font-face declarations for TTF font families", () => {
+    const result = parse(`
+      <style>
+        .title {
+          font-family: "Brand Sans";
+          font-weight: 700;
+        }
+        @font-face {
+          font-family: "Brand Sans";
+          src: local("Brand Sans"), url("/fonts/BrandSans-Bold.ttf?v=2") format("truetype");
+          font-weight: 700;
+        }
+      </style>
+      <div class="title">Ready</div>
+    `);
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    expect(result.ast.fontFaces).toEqual([
+      {
+        fontFamily: "Brand Sans",
+        src: "/fonts/BrandSans-Bold.ttf?v=2",
+        fontWeight: "700",
+      },
+    ]);
+    expect(result.ast.stylesheet.title).toMatchObject({
+      fontFamily: "Brand Sans",
+      fontWeight: "700",
+    });
+    expect(generate(result.ast)).toContain(
+      '@font-face { font-family: "Brand Sans"; src: url("/fonts/BrandSans-Bold.ttf?v=2"); font-weight: 700 }',
+    );
+  });
+
+  it("rejects invalid TTF @font-face sources and undeclared custom families", () => {
+    const invalidSource = parse(`
+      <style>
+        @font-face { font-family: "Brand Sans"; src: url("/fonts/BrandSans.woff2"); }
+      </style>
+      <div font-family="Brand Sans" />
+    `);
+
+    expect(invalidSource.success).toBe(false);
+    if (!invalidSource.success) {
+      expect(invalidSource.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: "invalid-stylesheet",
+            message: '@font-face "src" must contain a URL to a .ttf file.',
+          }),
+        ]),
+      );
+    }
+
+    const undeclared = parse('<div font-family="Brand Sans" />');
+    expect(undeclared.success).toBe(false);
+    if (!undeclared.success) {
+      expect(undeclared.errors[0]?.code).toBe("invalid-property-value");
+    }
+
+    class Badge extends Container {}
+    const unsupportedProperty = parse(
+      `
+        <style>
+          @font-face {
+            font-family: "Brand Sans";
+            src: url("/fonts/BrandSans-Regular.ttf");
+          }
+        </style>
+        <Badge font-family="Brand Sans" />
+      `,
+      {
+        componentSets: [
+          {
+            Badge: {
+              component: Badge as unknown as ComponentConstructor,
+              schema: z.object({}).strict(),
+              canHaveChildren: false,
+            },
+          },
+        ],
+      },
+    );
+    expect(unsupportedProperty.success).toBe(false);
+    if (!unsupportedProperty.success) {
+      expect(unsupportedProperty.errors[0]?.code).toBe("unknown-property");
+    }
+  });
+
   it("reports invalid property names and values with fixable messages", () => {
     class Badge extends Container {}
     const components: ComponentSet = {
@@ -544,6 +636,59 @@ describe("parse", () => {
     expect(react).toContain('import { openSans } from "@pmndrs/msdfonts/open-sans";');
     expect(react).toContain('import { roboto } from "@pmndrs/msdfonts/roboto";');
     expect(react).toContain('fontFamilies={{ "open-sans": openSans, roboto: roboto }}');
+  });
+
+  it("loads used TTF faces for interpreted and converted documents", () => {
+    const result = parse(`
+      <style>
+        @font-face {
+          font-family: "Brand Sans";
+          src: url("/fonts/BrandSans-Regular.ttf");
+          font-weight: 400;
+        }
+        @font-face {
+          font-family: "Brand Sans";
+          src: url("/fonts/BrandSans-Bold.ttf");
+          font-weight: 700;
+        }
+      </style>
+      <div font-family="Brand Sans" font-weight="700">Ready</div>
+    `);
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    const component = instantiate(result.ast);
+    expect(inputProperties(component).fontFamilies).toMatchObject({
+      "Brand Sans": {
+        400: expect.any(Function),
+        700: expect.any(Function),
+      },
+    });
+
+    const react = convertToReact(result.ast, { componentName: "UI" });
+    expect(react).toContain(
+      'import { Container, Text, useTTF } from "@react-three/uikit";',
+    );
+    expect(react).toContain(
+      'const ttfFont0 = useTTF("/fonts/BrandSans-Regular.ttf");',
+    );
+    expect(react).toContain(
+      '"Brand Sans": { "400": getTTFFont(ttfFont0, "/fonts/BrandSans-Regular.ttf"), "700": getTTFFont(ttfFont1, "/fonts/BrandSans-Bold.ttf") }',
+    );
+
+    const three = convertToThree(result.ast, { functionName: "createUI" });
+    expect(three).toContain(
+      'import { Container, TTFLoader, Text, reversePainterSortStable } from "@pmndrs/uikit";',
+    );
+    expect(three).toContain(
+      'const ttfFont0 = ttfLoader.loadAsync("/fonts/BrandSans-Regular.ttf");',
+    );
+    expect(three).toContain(
+      '"400": () => ttfFont0.then((fontFamilies) => getTTFFont(fontFamilies, "/fonts/BrandSans-Regular.ttf"))',
+    );
   });
 
   it("can parse and instantiate without schema validation", () => {

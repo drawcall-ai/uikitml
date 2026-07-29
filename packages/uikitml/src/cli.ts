@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { PreferredColorScheme } from "@pmndrs/uikit";
 import { Command, CommanderError, Option } from "commander";
 import { parse } from "./parse.js";
 import { CliError, parseDimension, printValidationErrors, readInput, type InputSource } from "./cli-utils.js";
@@ -9,7 +10,6 @@ import { convertToThree } from "./convert-three.js";
 import { sendFeedback } from "./feedback.js";
 import { renderToPng } from "./render.js";
 import { resolveKitComponentSets, type KitName } from "./kits.js";
-import type { PreferredColorScheme } from "./types.js";
 
 type KitOptions = {
   kit: KitName;

@@ -1,5 +1,4 @@
-import type { Component } from "@pmndrs/uikit";
-import type { Object3D } from "three";
+import type { Component, FontWeight, PreferredColorScheme } from "@pmndrs/uikit";
 import type { z } from "zod";
 
 export type Position = {
@@ -47,7 +46,11 @@ export type StylesheetRangeInfo = {
 
 export type RetainedStylesheet = Record<string, Record<string, unknown>>;
 
-export type PreferredColorScheme = "dark" | "light" | "system";
+export type UIKitMLFontFace = {
+  fontFamily: string;
+  src: string;
+  fontWeight: FontWeight;
+};
 
 export type ComponentOrigin = {
   kit: string;
@@ -86,21 +89,17 @@ export type UIKitMLAst = {
   root: UIKitMLNode;
   stylesheet: RetainedStylesheet;
   stylesheetRanges: StylesheetRangeInfo;
+  fontFaces?: UIKitMLFontFace[];
   metadata: {
     preferredColorScheme?: PreferredColorScheme;
   };
-};
-
-export type UIKitComponent = Component & {
-  children: Object3D[];
-  add(...objects: Object3D[]): unknown;
 };
 
 export type ComponentConstructor = new (
   properties?: Record<string, unknown>,
   initialClasses?: Array<string | Record<string, unknown>>,
   config?: Record<string, unknown>,
-) => UIKitComponent;
+) => Component;
 
 export type ComponentDefinition = {
   component: ComponentConstructor;

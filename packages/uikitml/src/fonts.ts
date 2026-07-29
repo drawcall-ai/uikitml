@@ -1,6 +1,6 @@
-import type { FontFamilies, FontFamilyWeightMap } from "@pmndrs/uikit";
+import { TTFLoader, type FontFamilies, type FontFamilyWeightMap, type MSDFResult } from "@pmndrs/uikit";
 import { z } from "zod";
-import type { RetainedStylesheet, UIKitMLAst, UIKitMLNode } from "./types.js";
+import type { RetainedStylesheet, UIKitMLAst, UIKitMLFontFace, UIKitMLNode } from "./types.js";
 
 export const fontFamilyNames = [
   "crimson-text",
@@ -26,7 +26,18 @@ export type UIKitMLFontFamily = (typeof fontFamilyNames)[number];
 
 export const fontFamilySchema = z.enum(fontFamilyNames);
 
+export type CollectedFonts = {
+  bundled: UIKitMLFontFamily[];
+  ttf: UIKitMLFontFace[];
+};
+
+type IndexedTTFFontFace = {
+  fontFace: UIKitMLFontFace;
+  index: number;
+};
+
 const fontFamilyNameSet = new Set<string>(fontFamilyNames);
+const ttfLoads = new Map<string, Promise<MSDFResult>>();
 
 const fontFamilyDefinitions: Record<
   UIKitMLFontFamily,
@@ -50,7 +61,7 @@ const fontFamilyDefinitions: Record<
       | "spaceMono"
       | "workSans";
     importPath: string;
-    weights: readonly string[];
+    weights: readonly (keyof FontFamilyWeightMap)[];
   }
 > = {
   "crimson-text": {
@@ -162,51 +173,134 @@ const fontFamilyLoaders: Record<UIKitMLFontFamily, () => Promise<FontFamilyWeigh
   "work-sans": () => import("@pmndrs/msdfonts/work-sans").then(({ workSans }) => workSans),
 };
 
-export function withFontFamilyEnum(schema: z.ZodType): z.ZodType {
-  const objectSchema = schema as z.ZodType & {
-    safeExtend?: (shape: { fontFamily: z.ZodOptional<typeof fontFamilySchema> }) => z.ZodType;
-    extend?: (shape: { fontFamily: z.ZodOptional<typeof fontFamilySchema> }) => z.ZodType;
-    unwrap?: () => z.ZodType;
-  };
-  const unwrapped = objectSchema.unwrap?.();
-  if (unwrapped != null && unwrapped !== schema) {
-    return withFontFamilyEnum(unwrapped);
+export function withFontFamilyEnum(
+  schema: z.ZodType,
+  declaredFontFamilyNames: Iterable<string> = [],
+): z.ZodType {
+  const objectSchema = unwrapSchema(schema);
+  if (objectSchema == null) {
+    return schema;
   }
-  const shape = { fontFamily: fontFamilySchema.optional() };
-  return objectSchema.safeExtend?.(shape) ?? objectSchema.extend?.(shape) ?? schema;
+  const declaredNames = new Set(declaredFontFamilyNames);
+  const schemaForFontFamily =
+    declaredNames.size === 0
+      ? fontFamilySchema
+      : z.string().refine(
+          (value) => isFontFamilyName(value) || declaredNames.has(value),
+          "Expected a bundled or @font-face font family",
+        );
+  const shape = { fontFamily: schemaForFontFamily.optional() };
+  return objectSchema.safeExtend(shape);
+}
+
+export function withDeclaredFontFamilyEnum(
+  schema: z.ZodType,
+  declaredFontFamilyNames: Iterable<string>,
+): z.ZodType {
+  const declaredNames = new Set(declaredFontFamilyNames);
+  if (declaredNames.size === 0) {
+    return schema;
+  }
+  const objectSchema = unwrapSchema(schema);
+  return objectSchema?.shape.fontFamily == null
+    ? schema
+    : withFontFamilyEnum(objectSchema, declaredNames);
+}
+
+function unwrapSchema(schema: z.ZodType): z.ZodObject | undefined {
+  if (schema instanceof z.ZodObject) {
+    return schema;
+  }
+  if (!(schema instanceof z.ZodLazy)) {
+    return undefined;
+  }
+  const unwrapped = schema.unwrap();
+  return unwrapped instanceof z.ZodObject ? unwrapped : undefined;
 }
 
 export function isFontFamilyName(value: unknown): value is UIKitMLFontFamily {
   return typeof value === "string" && fontFamilyNameSet.has(value);
 }
 
-export function collectFontFamilies(ast: UIKitMLAst): UIKitMLFontFamily[] {
-  const names = new Set<UIKitMLFontFamily>();
-  collectNodeFontFamilies(ast.root, names);
-  collectStyleFontFamilies(ast.stylesheet, names);
-  return [...names].sort();
+export function collectFonts(ast: UIKitMLAst): CollectedFonts {
+  const usedNames = collectUsedFontFamilyNames(ast);
+  const ttfNames = new Set((ast.fontFaces ?? []).map(({ fontFamily }) => fontFamily));
+  const effectiveFaces = new Map<string, UIKitMLFontFace>();
+  for (const fontFace of ast.fontFaces ?? []) {
+    if (!usedNames.has(fontFace.fontFamily)) {
+      continue;
+    }
+    effectiveFaces.set(`${fontFace.fontFamily}\0${fontFace.fontWeight}`, fontFace);
+  }
+  return {
+    bundled: fontFamilyNames.filter((name) => usedNames.has(name) && !ttfNames.has(name)),
+    ttf: [...effectiveFaces.values()],
+  };
 }
 
-export function createFontFamilies(names: Iterable<UIKitMLFontFamily>): FontFamilies {
+export function groupTTFFontFaces(
+  fontFaces: readonly UIKitMLFontFace[],
+): Map<string, IndexedTTFFontFace[]> {
+  const families = new Map<string, IndexedTTFFontFace[]>();
+  for (const [index, fontFace] of fontFaces.entries()) {
+    const family = families.get(fontFace.fontFamily) ?? [];
+    family.push({ fontFace, index });
+    families.set(fontFace.fontFamily, family);
+  }
+  return families;
+}
+
+export async function preloadTTFFontFaces(
+  fontFaces: readonly UIKitMLFontFace[],
+): Promise<void> {
+  // Concurrent MSDF generation can produce incomplete atlases.
+  for (const fontFace of fontFaces) {
+    const loaded = await loadTTF(fontFace.src);
+    getTTFFont(loaded, fontFace.src);
+  }
+}
+
+function collectUsedFontFamilyNames(ast: UIKitMLAst): Set<string> {
+  const names = new Set<string>();
+  collectNodeFontFamilies(ast.root, names);
+  collectStyleFontFamilies(ast.stylesheet, names);
+  return names;
+}
+
+export function createFontFamilies(fonts: CollectedFonts): FontFamilies {
   const fontFamilies: FontFamilies = {};
-  for (const name of names) {
+  for (const name of fonts.bundled) {
     const definition = fontFamilyDefinitions[name];
     const loadFamily = fontFamilyLoaders[name];
     fontFamilies[name] = Object.fromEntries(
       definition.weights.map((weight) => [
         weight,
-        () => loadFamily().then((family) => family[weight as keyof typeof family]),
+        () =>
+          loadFamily().then((family) => {
+            const source = family[weight];
+            if (source == null) {
+              throw new Error(`Bundled font "${name}" has no "${weight}" weight.`);
+            }
+            return typeof source === "function" ? source() : source;
+          }),
       ]),
-    ) as FontFamilyWeightMap;
+    );
+  }
+  for (const fontFace of fonts.ttf) {
+    fontFamilies[fontFace.fontFamily] = {
+      ...fontFamilies[fontFace.fontFamily],
+      [fontFace.fontWeight]: () =>
+        loadTTF(fontFace.src).then((loaded) => getTTFFont(loaded, fontFace.src)),
+    };
   }
   return fontFamilies;
 }
 
 export function addFontFamiliesToProps(
   props: Record<string, unknown>,
-  names: readonly UIKitMLFontFamily[],
+  fonts: CollectedFonts,
 ): Record<string, unknown> {
-  if (names.length === 0) {
+  if (fonts.bundled.length === 0 && fonts.ttf.length === 0) {
     return props;
   }
   const existing = isRecord(props.fontFamilies) ? props.fontFamilies : {};
@@ -214,7 +308,7 @@ export function addFontFamiliesToProps(
     ...props,
     fontFamilies: {
       ...existing,
-      ...createFontFamilies(names),
+      ...createFontFamilies(fonts),
     },
   };
 }
@@ -223,7 +317,26 @@ export function getFontFamilyDefinition(name: UIKitMLFontFamily) {
   return fontFamilyDefinitions[name];
 }
 
-function collectNodeFontFamilies(node: UIKitMLNode, names: Set<UIKitMLFontFamily>) {
+function loadTTF(src: string): Promise<MSDFResult> {
+  const existing = ttfLoads.get(src);
+  if (existing != null) {
+    return existing;
+  }
+  const loaded = new TTFLoader().loadAsync(src);
+  ttfLoads.set(src, loaded);
+  return loaded;
+}
+
+function getTTFFont(fontFamilies: MSDFResult, src: string) {
+  const family = Object.values(fontFamilies)[0];
+  const font = family == null ? undefined : Object.values(family)[0];
+  if (font == null) {
+    throw new Error(`TTF file "${src}" did not contain a font face.`);
+  }
+  return font;
+}
+
+function collectNodeFontFamilies(node: UIKitMLNode, names: Set<string>) {
   if (node.kind === "text") {
     return;
   }
@@ -235,14 +348,14 @@ function collectNodeFontFamilies(node: UIKitMLNode, names: Set<UIKitMLFontFamily
   }
 }
 
-function collectStyleFontFamilies(stylesheet: RetainedStylesheet, names: Set<UIKitMLFontFamily>) {
+function collectStyleFontFamilies(stylesheet: RetainedStylesheet, names: Set<string>) {
   for (const value of Object.values(stylesheet)) {
     collectRecordFontFamilies(value, names);
   }
 }
 
-function collectRecordFontFamilies(record: Record<string, unknown>, names: Set<UIKitMLFontFamily>) {
-  if (isFontFamilyName(record.fontFamily)) {
+function collectRecordFontFamilies(record: Record<string, unknown>, names: Set<string>) {
+  if (typeof record.fontFamily === "string") {
     names.add(record.fontFamily);
   }
   for (const value of Object.values(record)) {
