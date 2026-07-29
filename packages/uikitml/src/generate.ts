@@ -1,13 +1,13 @@
 import { encodeHTML } from "entities";
 import { camelToKebab } from "./names.js";
 import { formatStylesheetSection, stylesheetSectionNames } from "./style-sections.js";
-import type { RetainedStylesheet, UIKitMLAst, UIKitMLNode } from "./types.js";
+import type { RetainedStylesheet, UIKitMLAst, UIKitMLFontFace, UIKitMLNode } from "./types.js";
 
 const stylesheetSections = new Set<string>(stylesheetSectionNames);
 
 export function generate(ast: UIKitMLAst): string {
   const metadata = generateMetadata(ast);
-  const stylesheet = generateStylesheet(ast.stylesheet);
+  const stylesheet = generateStylesheet(ast.stylesheet, ast.fontFaces ?? []);
   const body = generateNode(ast.root, 0);
   return [metadata, stylesheet, body].filter((part) => part.length > 0).join("\n");
 }
@@ -78,13 +78,18 @@ function formatAttribute(name: string, value: unknown): string {
   return `${name}="${escapeAttribute(String(value))}"`;
 }
 
-function generateStylesheet(stylesheet: RetainedStylesheet): string {
-  const rules: string[] = [];
+function generateStylesheet(stylesheet: RetainedStylesheet, fontFaces: readonly UIKitMLFontFace[]): string {
+  const styleRules: string[] = [];
   for (const [className, content] of Object.entries(stylesheet)) {
     const selectorBase = className.startsWith("__id__") ? `#${className.slice("__id__".length)}` : `.${className}`;
-    pushStyleRules(rules, selectorBase, content);
+    pushStyleRules(styleRules, selectorBase, content);
   }
+  const rules = [...fontFaces.map(generateFontFace), ...styleRules];
   return rules.length === 0 ? "" : `<style>\n${rules.map((rule) => `  ${rule}`).join("\n")}\n</style>`;
+}
+
+function generateFontFace(fontFace: UIKitMLFontFace): string {
+  return `@font-face { font-family: ${JSON.stringify(fontFace.fontFamily)}; src: url(${JSON.stringify(fontFace.src)}); font-weight: ${fontFace.fontWeight} }`;
 }
 
 function pushStyleRules(rules: string[], selector: string, content: Record<string, unknown>) {

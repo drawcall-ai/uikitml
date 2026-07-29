@@ -1,10 +1,16 @@
-import { Component, Container, reversePainterSortStable, StyleSheet } from "@pmndrs/uikit";
+import {
+  Component,
+  Container,
+  reversePainterSortStable,
+  StyleSheet,
+  type PreferredColorScheme,
+} from "@pmndrs/uikit";
 import * as THREE from "three";
 import { instantiate } from "../instantiate.js";
+import { collectFonts, preloadTTFFontFaces } from "../fonts.js";
 import { resolveKitComponentSets, type KitName } from "../kits.js";
 import { parse } from "../parse.js";
 import { createRenderWrapperProps } from "../render-layout.js";
-import type { PreferredColorScheme, UIKitComponent } from "../types.js";
 
 type RenderPayload = {
   source: string;
@@ -33,7 +39,7 @@ const scene = new THREE.Scene();
 let camera = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, -1000, 1000);
 camera.position.set(0, 0, 100);
 
-let currentRoot: UIKitComponent | undefined;
+let currentRoot: Component | undefined;
 let measuredSize: [number, number] | undefined;
 
 window.uikitmlRender = {
@@ -46,9 +52,10 @@ window.uikitmlRender = {
         return { ok: false, error: "render received invalid UIKitML" };
       }
 
+      await preloadTTFFontFaces(collectFonts(result.ast).ttf);
       replaceStyleSheet(result.ast.stylesheet);
       const rootProps = createRenderWrapperProps(payload);
-      const wrapper = new Container(rootProps) as UIKitComponent;
+      const wrapper = new Container(rootProps);
       wrapper.add(instantiate(result.ast, { componentSets, preferredColorScheme: payload.preferredColorScheme }));
       scene.add(wrapper);
       currentRoot = wrapper;
@@ -91,7 +98,7 @@ window.uikitmlRender = {
   },
 };
 
-async function measureRoot(root: UIKitComponent): Promise<[number, number]> {
+async function measureRoot(root: Component): Promise<[number, number]> {
   await settleRoot(root);
   const size = root.size.value;
   if (size == null) {
@@ -100,7 +107,7 @@ async function measureRoot(root: UIKitComponent): Promise<[number, number]> {
   return size;
 }
 
-async function settleRoot(root: UIKitComponent) {
+async function settleRoot(root: Component) {
   let lastSize = "";
   let stableFrames = 0;
 
@@ -134,7 +141,7 @@ function replaceStyleSheet(stylesheet: Record<string, Record<string, unknown>>) 
   Object.assign(StyleSheet, stylesheet);
 }
 
-function resolveRetainedClassLists(root: UIKitComponent) {
+function resolveRetainedClassLists(root: Component) {
   root.traverse((object) => {
     if (!(object instanceof Component)) {
       return;
@@ -159,15 +166,15 @@ function clearCurrentRoot() {
   measuredSize = undefined;
 }
 
-function disposeComponentTree(root: UIKitComponent) {
-  const disposable: UIKitComponent[] = [];
+function disposeComponentTree(root: Component) {
+  const dispose: Array<() => void> = [];
   root.traverse((object) => {
     if (object instanceof Component) {
-      disposable.push(object as UIKitComponent);
+      dispose.push(() => object.dispose());
     }
   });
-  for (const component of disposable.reverse()) {
-    component.dispose();
+  for (const disposeComponent of dispose.reverse()) {
+    disposeComponent();
   }
   scene.remove(root);
 }

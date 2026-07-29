@@ -24,6 +24,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build --config vite.render.config.ts",
     "test": "vitest run",
+    "test:cli": "pnpm build && vitest run --config vitest.cli.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

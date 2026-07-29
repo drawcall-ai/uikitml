@@ -57,6 +57,9 @@ jobs:
       - name: Build
         run: pnpm --filter "./packages/*" build
 
+      - name: CLI integration test
+        run: pnpm --filter @drawcall/uikitml test:cli
+
       - name: Set package version
         working-directory: ./packages/uikitml
         run: npm pkg set version="${{ steps.gitversion.outputs.fullSemVer }}"

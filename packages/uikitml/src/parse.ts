@@ -1,8 +1,8 @@
 import { ContainerPropertiesSchema } from "@pmndrs/uikit";
-import { z } from "zod";
-import { parseStylesheet, parseStyleDeclarations } from "./css.js";
+import type { z } from "zod";
+import { collectFontFaceFamilyNames, parseStylesheet, parseStyleDeclarations } from "./css.js";
 import { resolveComponentRegistry } from "./component-sets.js";
-import { withFontFamilyEnum } from "./fonts.js";
+import { withDeclaredFontFamilyEnum, withFontFamilyEnum } from "./fonts.js";
 import { formatInvalidPropertyNameMessage, isKebabPropertyName, kebabToCamel } from "./names.js";
 import { tokenize, type ParsedAttribute, type UIKitMLToken } from "./tokens.js";
 import type {
@@ -10,12 +10,13 @@ import type {
   ComponentDefinition,
   ParseOptions,
   ParseResult,
-  PreferredColorScheme,
   PropertyProvenance,
   RetainedStylesheet,
   SourceRange,
   SourceRangeInfo,
   StylesheetRangeInfo,
+  UIKitMLAst,
+  UIKitMLFontFace,
   UIKitMLNode,
   UIKitMLError,
 } from "./types.js";
@@ -58,10 +59,25 @@ export function parse(source: string, options: ParseOptions = {}): ParseResult {
   const errors = [...tokenized.errors];
   const tokens: UIKitMLToken[] = tokenized.tokens;
 
-  const registry = resolveComponentRegistry(options.componentSets, options.includeHtmlComponentSet);
+  const declaredFontFamilyNames = new Set(
+    tokens.flatMap((token) =>
+      token.type === "styleBlock" ? collectFontFaceFamilyNames(token.css, token.contentRange) : [],
+    ),
+  );
+  const registry: Record<string, ComponentDefinition> = {};
+  for (const [name, definition] of Object.entries(
+    resolveComponentRegistry(options.componentSets, options.includeHtmlComponentSet),
+  )) {
+    registry[name] = {
+      ...definition,
+      schema: withDeclaredFontFamilyEnum(definition.schema, declaredFontFamilyNames),
+    };
+  }
   const stylesheetRanges: StylesheetRangeInfo = { blocks: [], rules: [] };
   const stylesheet: RetainedStylesheet = {};
-  const metadata: { preferredColorScheme?: PreferredColorScheme } = {};
+  const fontFaces: UIKitMLFontFace[] = [];
+  const stylesheetSchema = withFontFamilyEnum(ContainerPropertiesSchema, declaredFontFamilyNames);
+  const metadata: UIKitMLAst["metadata"] = {};
   const roots: TreeNode[] = [];
   const stack: StackEntry[] = [];
 
@@ -71,10 +87,11 @@ export function parse(source: string, options: ParseOptions = {}): ParseResult {
         break;
       case "styleBlock": {
         stylesheetRanges.blocks.push(token.range);
-        const parsed = parseStylesheet(token.css, token.contentRange, withFontFamilyEnum(ContainerPropertiesSchema), {
+        const parsed = parseStylesheet(token.css, token.contentRange, stylesheetSchema, {
           validate,
         });
         Object.assign(stylesheet, parsed.stylesheet);
+        fontFaces.push(...parsed.fontFaces);
         stylesheetRanges.rules.push(...parsed.ranges.rules);
         errors.push(...parsed.errors);
         break;
@@ -189,6 +206,7 @@ export function parse(source: string, options: ParseOptions = {}): ParseResult {
       root: built.node,
       stylesheet,
       stylesheetRanges,
+      fontFaces,
       metadata,
     },
   };
@@ -197,7 +215,7 @@ export function parse(source: string, options: ParseOptions = {}): ParseResult {
 function parseMetadata(
   attributes: ParsedAttribute[],
   range: SourceRange,
-  metadata: { preferredColorScheme?: PreferredColorScheme },
+  metadata: UIKitMLAst["metadata"],
   stack: StackEntry[],
 ): UIKitMLError[] {
   const errors: UIKitMLError[] = [];

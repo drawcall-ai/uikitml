@@ -1,10 +1,17 @@
+import type { PreferredColorScheme } from "@pmndrs/uikit";
 import { resolveComponentRegistry } from "./component-sets.js";
 import {
-  collectFontFamilies,
+  collectFonts,
   getFontFamilyDefinition,
-  type UIKitMLFontFamily,
+  groupTTFFontFaces,
+  type CollectedFonts,
 } from "./fonts.js";
-import type { ComponentSet, PreferredColorScheme, RetainedStylesheet, UIKitMLAst, UIKitMLNode } from "./types.js";
+import type {
+  ComponentSet,
+  RetainedStylesheet,
+  UIKitMLAst,
+  UIKitMLNode,
+} from "./types.js";
 
 export type ConvertThreeOptions = {
   functionName: string;
@@ -24,11 +31,15 @@ export function convertToThree(ast: UIKitMLAst, options: ConvertThreeOptions): s
   const typeImports = new Map<string, Set<string>>();
   const stylesheet = Object.keys(ast.stylesheet).length > 0 ? ast.stylesheet : undefined;
   const preferredColorScheme = options.preferredColorScheme ?? ast.metadata.preferredColorScheme;
-  const fontFamilies = collectFontFamilies(ast);
-  const state: RenderState = { nextId: 1, hasText: false };
-  const body: string[] = [];
-
-  const rootName = renderNode(ast.root, body, registry, imports, fontFamilies, state, true);
+  const fonts = collectFonts(ast);
+  const state: RenderState = {
+    nextId: 1,
+    hasText: false,
+    lines: [],
+    registry,
+    imports,
+  };
+  const rootName = renderNode(ast.root, state, "root", renderFontFamiliesProp(fonts));
 
   addImport(imports, "@pmndrs/uikit", "reversePainterSortStable");
   addTypeImport(typeImports, "three", "WebGLRenderer");
@@ -43,9 +54,12 @@ export function convertToThree(ast: UIKitMLAst, options: ConvertThreeOptions): s
     addImport(imports, "@pmndrs/uikit", "Text");
     addImport(imports, "@preact/signals-core", "computed");
   }
-  for (const fontFamily of fontFamilies) {
+  for (const fontFamily of fonts.bundled) {
     const definition = getFontFamilyDefinition(fontFamily);
     addImport(imports, definition.importPath, definition.exportName);
+  }
+  if (fonts.ttf.length > 0) {
+    addImport(imports, "@pmndrs/uikit", "TTFLoader");
   }
 
   const lines: string[] = [];
@@ -73,7 +87,15 @@ export function convertToThree(ast: UIKitMLAst, options: ConvertThreeOptions): s
   }
 
   lines.push(`export function ${options.functionName}() {`);
-  lines.push(...body);
+  if (fonts.ttf.length > 0) {
+    lines.push("  const ttfLoader = new TTFLoader();");
+    for (const [index, fontFace] of fonts.ttf.entries()) {
+      lines.push(
+        `  const ttfFont${index} = ttfLoader.loadAsync(${JSON.stringify(fontFace.src)});`,
+      );
+    }
+  }
+  lines.push(...state.lines);
   lines.push(`  return ${rootName};`);
   lines.push("}");
   lines.push("");
@@ -82,6 +104,20 @@ export function convertToThree(ast: UIKitMLAst, options: ConvertThreeOptions): s
   lines.push("  renderer.setTransparentSort(reversePainterSortStable);");
   lines.push("}");
   lines.push("");
+
+  if (fonts.ttf.length > 0) {
+    lines.push(
+      'function getTTFFont(fontFamilies: Awaited<ReturnType<TTFLoader["loadAsync"]>>, source: string) {',
+    );
+    lines.push("  const family = Object.values(fontFamilies)[0];");
+    lines.push("  const font = family == null ? undefined : Object.values(family)[0];");
+    lines.push("  if (font == null) {");
+    lines.push('    throw new Error(`TTF file "${source}" did not contain a font face.`);');
+    lines.push("  }");
+    lines.push("  return font;");
+    lines.push("}");
+    lines.push("");
+  }
 
   if (state.hasText) {
     lines.push("function createTextComponent(value: string): Text {");
@@ -105,21 +141,22 @@ export function convertToThree(ast: UIKitMLAst, options: ConvertThreeOptions): s
 type RenderState = {
   nextId: number;
   hasText: boolean;
+  lines: string[];
+  registry: ReturnType<typeof resolveComponentRegistry>;
+  imports: Map<string, Set<string>>;
 };
 
 function renderNode(
   node: UIKitMLNode,
-  lines: string[],
-  registry: ReturnType<typeof resolveComponentRegistry>,
-  imports: Map<string, Set<string>>,
-  fontFamilies: readonly UIKitMLFontFamily[],
   state: RenderState,
-  isRoot = false,
+  preferredName?: string,
+  extraProp?: string,
 ): string {
+  const variableName =
+    preferredName ?? (node.kind === "text" ? `text${state.nextId++}` : `element${state.nextId++}`);
   if (node.kind === "text") {
     state.hasText = true;
-    const variableName = isRoot ? "root" : `text${state.nextId++}`;
-    lines.push(`${indent(1)}const ${variableName} = createTextComponent(${formatExpression(node.value)});`);
+    state.lines.push(`${indent(1)}const ${variableName} = createTextComponent(${formatExpression(node.value)});`);
     return variableName;
   }
 
@@ -133,22 +170,17 @@ function renderNode(
   }
 
   const componentName = origin.name;
-  addImport(imports, packageName, componentName);
+  addImport(state.imports, packageName, componentName);
 
-  const variableName = isRoot ? "root" : `element${state.nextId++}`;
-  const definition = registry[node.tagName];
+  const definition = state.registry[node.tagName];
   const props = { ...definition?.defaults, ...node.props };
-  const args = renderConstructorArgs(
-    props,
-    node.classList,
-    isRoot && fontFamilies.length > 0 ? renderFontFamiliesProp(fontFamilies) : undefined,
-  );
-  lines.push(`${indent(1)}const ${variableName} = new ${componentName}(${args});`);
+  const args = renderConstructorArgs(props, node.classList, extraProp);
+  state.lines.push(`${indent(1)}const ${variableName} = new ${componentName}(${args});`);
 
   if (node.kind === "element") {
     for (const child of node.children) {
-      const childName = renderNode(child, lines, registry, imports, fontFamilies, state);
-      lines.push(`${indent(1)}${variableName}.add(${childName});`);
+      const childName = renderNode(child, state);
+      state.lines.push(`${indent(1)}${variableName}.add(${childName});`);
     }
   }
 
@@ -177,12 +209,19 @@ function renderProps(props: Record<string, unknown>, extraProp?: string): string
   return `{\n${rendered.map((entry) => `${indent(2)}${entry},`).join("\n")}\n${indent(1)}}`;
 }
 
-function renderFontFamiliesProp(fontFamilies: readonly UIKitMLFontFamily[]): string {
-  const entries = fontFamilies.map((fontFamily) => {
+function renderFontFamiliesProp(fonts: CollectedFonts): string | undefined {
+  const entries = fonts.bundled.map((fontFamily) => {
     const definition = getFontFamilyDefinition(fontFamily);
     return `${formatObjectKey(fontFamily)}: ${definition.exportName}`;
   });
-  return `fontFamilies: { ${entries.join(", ")} }`;
+  for (const [fontFamily, faces] of groupTTFFontFaces(fonts.ttf)) {
+    const weights = faces.map(
+      ({ index, fontFace }) =>
+        `${formatObjectKey(String(fontFace.fontWeight))}: () => ttfFont${index}.then((fontFamilies) => getTTFFont(fontFamilies, ${JSON.stringify(fontFace.src)}))`,
+    );
+    entries.push(`${formatObjectKey(fontFamily)}: { ${weights.join(", ")} }`);
+  }
+  return entries.length === 0 ? undefined : `fontFamilies: { ${entries.join(", ")} }`;
 }
 
 function propRank(name: string): number {

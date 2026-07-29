@@ -5,9 +5,9 @@ import { createServer, type Server } from "node:http";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { promisify } from "node:util";
+import type { PreferredColorScheme } from "@pmndrs/uikit";
 import { CliError } from "./cli-utils.js";
 import type { KitName } from "./kits.js";
-import type { PreferredColorScheme } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -148,6 +148,9 @@ function contentType(filePath: string): string {
   }
   if (filePath.endsWith(".css")) {
     return "text/css; charset=utf-8";
+  }
+  if (filePath.endsWith(".wasm")) {
+    return "application/wasm";
   }
   return "application/octet-stream";
 }

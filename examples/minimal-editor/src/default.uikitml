@@ -1,0 +1,54 @@
+<meta preferred-color-scheme="dark" />
+<style>
+  @font-face {
+    font-family: "Cinzel Decorative";
+    src: url("https://raw.githubusercontent.com/google/fonts/main/ofl/cinzeldecorative/CinzelDecorative-Regular.ttf");
+    font-weight: 400;
+  }
+
+  @font-face {
+    font-family: "Cinzel Decorative";
+    src: url("https://raw.githubusercontent.com/google/fonts/main/ofl/cinzeldecorative/CinzelDecorative-Bold.ttf");
+    font-weight: 700;
+  }
+
+  .card {
+    background-color: #111827;
+    border-radius: 20;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+    gap: 8px;
+  }
+
+  .row {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .icon {
+    color: #38bdf8;
+  }
+
+  .title {
+    color: white;
+    font-family: "Cinzel Decorative";
+    font-size: 28;
+    font-weight: 700;
+  }
+
+  .copy {
+    color: #cbd5e1;
+    font-family: "Cinzel Decorative";
+    font-size: 15;
+    font-weight: 400;
+  }
+</style>
+<div class="card">
+  <div class="row">
+    <Sparkles class="icon" />
+    <h2 class="title">UIKitML</h2>
+  </div>
+  <p class="copy">Custom Cinzel in regular and bold.</p>
+</div>

@@ -3,11 +3,11 @@ export { generate } from "./generate.js";
 export { instantiate } from "./instantiate.js";
 export { convertToReact, type ConvertReactOptions } from "./convert-react.js";
 export { convertToThree, type ConvertThreeOptions } from "./convert-three.js";
-export { renderToPng, type RenderResult, type RenderToPngOptions } from "./render.js";
 export { htmlComponentSet } from "./component-sets.js";
 export { horizonComponentSet, lucideComponentSet, resolveKitComponentSets } from "./kits.js";
 export type { KitName } from "./kits.js";
 export { fontFamilyNames, type UIKitMLFontFamily } from "./fonts.js";
+export type { FontWeight, PreferredColorScheme } from "@pmndrs/uikit";
 export type {
   AttributeRangeInfo,
   ComponentOrigin,
@@ -19,15 +19,14 @@ export type {
   ParseOptions,
   ParseResult,
   ParseSuccess,
-  PreferredColorScheme,
   Position,
   PropertyProvenance,
   RetainedStylesheet,
   SourceRange,
   SourceRangeInfo,
   StylesheetRangeInfo,
-  UIKitComponent,
   UIKitMLAst,
+  UIKitMLFontFace,
   UIKitMLError,
   UIKitMLErrorCode,
   UIKitMLElementNode,

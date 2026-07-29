@@ -50,3 +50,37 @@ import { parse, generate } from "@drawcall/uikitml";
 const result = parse("<div><h1>Hello XR</h1></div>");
 if (result.success) generate(result.ast);
 ```
+
+## Custom TTF fonts
+
+Declare runtime TTF fonts with CSS `@font-face`, then use the family name in
+attributes, inline styles, or stylesheet rules:
+
+```xml
+<style>
+  @font-face {
+    font-family: "Brand Sans";
+    src: url("/fonts/BrandSans-Regular.ttf");
+    font-weight: 400;
+  }
+
+  @font-face {
+    font-family: "Brand Sans";
+    src: url("/fonts/BrandSans-Bold.ttf") format("truetype");
+    font-weight: 700;
+  }
+
+  .title { font-family: "Brand Sans"; font-weight: 700; }
+</style>
+
+<h1 class="title">Launch ready</h1>
+```
+
+UIKitML supports `.ttf` URLs and the CSS `font-family`, `src`, and
+`font-weight` descriptors. `font-weight` defaults to `normal`. Runtime and
+vanilla Three.js conversion use `TTFLoader`. React conversion uses `useTTF`
+and requires a `Suspense` boundary.
+
+See the
+[minimal editor source](./examples/minimal-editor/src/default.uikitml) for a
+working multiple-weight example.

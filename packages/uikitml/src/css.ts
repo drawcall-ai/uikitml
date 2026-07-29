@@ -1,3 +1,4 @@
+import type { FontWeight } from "@pmndrs/uikit";
 import { z } from "zod";
 import { formatInvalidPropertyNameMessage, isKebabPropertyName, kebabToCamel } from "./names.js";
 import { normalizeStylesheetSection } from "./style-sections.js";
@@ -5,6 +6,7 @@ import type {
   RetainedStylesheet,
   SourceRange,
   StylesheetRangeInfo,
+  UIKitMLFontFace,
   UIKitMLError,
 } from "./types.js";
 
@@ -72,7 +74,7 @@ export function parseStyleDeclarations(
       continue;
     }
     const property = kebabToCamel(rawName);
-    properties[property] = rawValue;
+    properties[property] = property === "fontFamily" ? normalizeFontFamily(rawValue) : rawValue;
     if (range != null) {
       declarationRanges.set(property, locate?.(trimmedStart, trimmedStart + trimmed.length) ?? range);
     }
@@ -92,10 +94,12 @@ export function parseStylesheet(
   options: { validate?: boolean } = {},
 ): {
   stylesheet: RetainedStylesheet;
+  fontFaces: UIKitMLFontFace[];
   ranges: StylesheetRangeInfo;
   errors: UIKitMLError[];
 } {
   const stylesheet: RetainedStylesheet = {};
+  const fontFaces: UIKitMLFontFace[] = [];
   const errors: UIKitMLError[] = [];
   const ranges: StylesheetRangeInfo = { blocks: [], rules: [] };
   const extracted = extractRules(css, contentRange);
@@ -103,10 +107,19 @@ export function parseStylesheet(
   errors.push(...extracted.errors);
 
   for (const rule of rules) {
-    const parsedSelector = parseSelector(rule.selector);
     const declarationRanges = new Map<string, SourceRange>();
     ranges.rules.push({ selector: rule.selectorRange, declarations: declarationRanges });
 
+    if (rule.selector.toLowerCase() === "@font-face") {
+      const parsed = parseFontFace(css, contentRange, rule, declarationRanges);
+      errors.push(...parsed.errors);
+      if (parsed.fontFace != null) {
+        fontFaces.push(parsed.fontFace);
+      }
+      continue;
+    }
+
+    const parsedSelector = parseSelector(rule.selector);
     if (!parsedSelector.ok) {
       errors.push({
         code: "invalid-stylesheet",
@@ -159,7 +172,115 @@ export function parseStylesheet(
     Object.assign(target, declarations.properties);
   }
 
-  return { stylesheet, ranges, errors };
+  return { stylesheet, fontFaces, ranges, errors };
+}
+
+export function collectFontFaceFamilyNames(css: string, contentRange: SourceRange): string[] {
+  const names = new Set<string>();
+  for (const rule of extractRules(css, contentRange).rules) {
+    if (rule.selector.toLowerCase() !== "@font-face") {
+      continue;
+    }
+    const declarations = parseStyleDeclarations(rule.body, undefined);
+    const fontFamily = declarations.properties.fontFamily;
+    if (typeof fontFamily === "string" && fontFamily.length > 0) {
+      names.add(fontFamily);
+    }
+  }
+  return [...names];
+}
+
+function parseFontFace(
+  css: string,
+  contentRange: SourceRange,
+  rule: CssRule,
+  declarationRanges: Map<string, SourceRange>,
+): { fontFace?: UIKitMLFontFace; errors: UIKitMLError[] } {
+  const parsed = parseStyleDeclarations(
+    rule.body,
+    rule.selectorRange,
+    (start, end) =>
+      rangeInCss(css, contentRange, rule.bodyStartInCss + start, rule.bodyStartInCss + end),
+    '@font-face rule',
+  );
+  for (const [property, range] of parsed.declarationRanges) {
+    declarationRanges.set(property, range);
+  }
+
+  const errors = [...parsed.errors];
+  const supportedDescriptors = new Set(["fontFamily", "src", "fontWeight"]);
+  for (const property of Object.keys(parsed.properties)) {
+    if (supportedDescriptors.has(property)) {
+      continue;
+    }
+    errors.push({
+      code: "unknown-property",
+      message: `Unsupported @font-face descriptor "${property}".`,
+      range: declarationRanges.get(property) ?? rule.selectorRange,
+    });
+  }
+
+  const fontFamily = parsed.properties.fontFamily;
+  if (typeof fontFamily !== "string" || fontFamily.length === 0) {
+    errors.push({
+      code: "invalid-stylesheet",
+      message: '@font-face requires a non-empty "font-family" descriptor.',
+      range: declarationRanges.get("fontFamily") ?? rule.selectorRange,
+    });
+  }
+
+  const rawSource = parsed.properties.src;
+  const src = typeof rawSource === "string" ? findTTFSource(rawSource) : undefined;
+  if (src == null) {
+    errors.push({
+      code: "invalid-stylesheet",
+      message: '@font-face "src" must contain a URL to a .ttf file.',
+      range: declarationRanges.get("src") ?? rule.selectorRange,
+    });
+  }
+
+  const rawWeight = parsed.properties.fontWeight;
+  const fontWeight = typeof rawWeight === "string" ? rawWeight : "normal";
+  if (!isCSSFontWeight(fontWeight)) {
+    errors.push({
+      code: "invalid-stylesheet",
+      message: `Invalid @font-face font weight "${fontWeight}". Expected "normal", "bold", or a CSS weight from 1 to 1000.`,
+      range: declarationRanges.get("fontWeight") ?? rule.selectorRange,
+    });
+  }
+
+  const fontFace =
+    typeof fontFamily === "string" && src != null && isCSSFontWeight(fontWeight)
+      ? { fontFamily, src, fontWeight }
+      : undefined;
+  if (errors.length > 0 || fontFace == null) {
+    return { errors };
+  }
+  return { fontFace, errors };
+}
+
+function normalizeFontFamily(value: string): string {
+  const trimmed = value.trim();
+  return /^(["'])(.*)\1$/.exec(trimmed)?.[2] ?? trimmed;
+}
+
+function findTTFSource(value: string): string | undefined {
+  const urlPattern = /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\s*\)/gi;
+  for (const match of value.matchAll(urlPattern)) {
+    const url = (match[1] ?? match[2] ?? match[3])?.trim();
+    if (url != null && /\.ttf(?:[?#]|$)/i.test(url)) {
+      return url;
+    }
+  }
+  return undefined;
+}
+
+function isCSSFontWeight(value: string): value is Extract<FontWeight, string> {
+  if (value === "normal" || value === "bold") {
+    return true;
+  }
+  const weight = Number(value);
+  return /^\d+$/.test(value) && weight >= 1 && weight <= 1000;
 }
 
 type FlattenedValidationIssue = {
