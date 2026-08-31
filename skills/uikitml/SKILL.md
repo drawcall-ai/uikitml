@@ -35,7 +35,7 @@ Kits provide PascalCase component tags. The default kit is Shadcn-style; the Hor
 - `class` becomes `classList`; `id` is passed through and can be styled.
 - Inline styles use the same declaration syntax as `<style>`: `<Card style="padding: 16; gap: 8" />`.
 - `font-family` accepts bundled MSDF font names: `crimson-text`, `fira-code`, `inconsolata`, `inter`, `lato`, `libre-baskerville`, `merriweather`, `montserrat`, `nunito`, `open-sans`, `playfair-display`, `poppins`, `raleway`, `roboto`, `source-code-pro`, `space-mono`, and `work-sans`.
-- Custom TTF families use CSS `@font-face` with `font-family`, a `.ttf` URL in `src`, and an optional `font-weight` (`normal` by default). Use the declared family name in `font-family`. React conversion uses `useTTF` and requires a `Suspense` boundary.
+- Custom TTF and WOFF2 families use CSS `@font-face` with `font-family`, a `.ttf` or `.woff2` URL in `src`, and an optional `font-weight` (`normal` by default). Use the declared family name in `font-family`. React conversion uses `useTTF` and requires a `Suspense` boundary. Converted `.woff2` output also needs `woff2-encoder`.
 - Layout is UIKit flex layout: `display` supports `flex` (the default), `none`, and `contents`; positioning supports static/default flow and `position-type="absolute"`.
 - Text is trimmed and HTML entities are decoded.
 - Plain `.uikitml` cannot express function props such as callbacks or icon constructors.
