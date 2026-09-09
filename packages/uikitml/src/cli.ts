@@ -7,7 +7,6 @@ import { parse } from "./parse.js";
 import { CliError, parseDimension, printValidationErrors, readInput, type InputSource } from "./cli-utils.js";
 import { convertToReact } from "./convert-react.js";
 import { convertToThree } from "./convert-three.js";
-import { sendFeedback } from "./feedback.js";
 import { renderToPng } from "./render.js";
 import { resolveKitComponentSets, type KitName } from "./kits.js";
 
@@ -97,15 +96,6 @@ program
           });
     await writeFile(out, code, "utf8");
     console.log(`converted ${out}`);
-  });
-
-program
-  .command("feedback")
-  .argument("<text>")
-  .description("Send feedback about UIKitML to the maintainers")
-  .action(async (text: string) => {
-    const eventId = await sendFeedback(text);
-    console.log(`feedback sent ${eventId}`);
   });
 
 try {
