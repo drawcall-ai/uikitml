@@ -79,8 +79,9 @@ name in attributes, inline styles, or stylesheet rules:
 UIKitML supports `.ttf` and `.woff2` URLs and the CSS `font-family`, `src`, and
 `font-weight` descriptors. `font-weight` defaults to `normal`. Runtime and
 vanilla Three.js conversion use `TTFLoader`. React conversion uses `useTTF`
-and requires a `Suspense` boundary. `.woff2` sources are decompressed to TTF
-before MSDF generation, so converted output also needs `woff2-encoder`.
+for TTF-only output and a generated `useFont` helper when WOFF2 is present;
+both require a `Suspense` boundary. WOFF2 is decompressed to TTF before MSDF
+generation, so converted WOFF2 output also needs `woff2-encoder`.
 
 See the
 [minimal editor source](./examples/minimal-editor/src/default.uikitml) for a
