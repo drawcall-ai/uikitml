@@ -1,5 +1,7 @@
 import type { PreferredColorScheme } from "@pmndrs/uikit";
 import { resolveComponentRegistry } from "./component-sets.js";
+import { renderReactUseFontHelper } from "./convert-font-helpers.js";
+import { isWoff2FontSource } from "./font-source.js";
 import {
   collectFonts,
   getFontFamilyDefinition,
@@ -31,6 +33,7 @@ export function convertToReact(ast: UIKitMLAst, options: ConvertReactOptions): s
   const stylesheet = Object.keys(ast.stylesheet).length > 0 ? ast.stylesheet : undefined;
   const preferredColorScheme = options.preferredColorScheme ?? ast.metadata.preferredColorScheme;
   const fonts = collectFonts(ast);
+  const usesWoff2 = fonts.ttf.some((fontFace) => isWoff2FontSource(fontFace.src));
   const body = renderNode(ast.root, 2, registry, imports, renderFontFamiliesProp(fonts));
 
   if (preferredColorScheme != null) {
@@ -44,7 +47,7 @@ export function convertToReact(ast: UIKitMLAst, options: ConvertReactOptions): s
     addImport(imports, definition.importPath, definition.exportName);
   }
   if (fonts.ttf.length > 0) {
-    addImport(imports, "@react-three/uikit", "useTTF");
+    addImport(imports, "@react-three/uikit", usesWoff2 ? "TTFLoader" : "useTTF");
   }
 
   const lines: string[] = [];
@@ -69,8 +72,9 @@ export function convertToReact(ast: UIKitMLAst, options: ConvertReactOptions): s
   }
 
   lines.push(`export function ${options.componentName}() {`);
+  const fontHook = usesWoff2 ? "useFont" : "useTTF";
   for (const [index, fontFace] of fonts.ttf.entries()) {
-    lines.push(`  const ttfFont${index} = useTTF(${JSON.stringify(fontFace.src)});`);
+    lines.push(`  const ttfFont${index} = ${fontHook}(${JSON.stringify(fontFace.src)});`);
   }
   if (fonts.ttf.length > 0) {
     lines.push("");
@@ -82,15 +86,20 @@ export function convertToReact(ast: UIKitMLAst, options: ConvertReactOptions): s
   lines.push("");
 
   if (fonts.ttf.length > 0) {
-    lines.push("function getTTFFont(fontFamilies: ReturnType<typeof useTTF>, source: string) {");
+    const fontType = usesWoff2 ? "typeof useFont" : "typeof useTTF";
+    lines.push(`function getTTFFont(fontFamilies: ReturnType<${fontType}>, source: string) {`);
     lines.push("  const family = Object.values(fontFamilies)[0];");
     lines.push("  const font = family == null ? undefined : Object.values(family)[0];");
     lines.push("  if (font == null) {");
-    lines.push('    throw new Error(`TTF file "${source}" did not contain a font face.`);');
+    lines.push('    throw new Error(`Font file "${source}" did not contain a font face.`);');
     lines.push("  }");
     lines.push("  return font;");
     lines.push("}");
     lines.push("");
+  }
+
+  if (usesWoff2) {
+    lines.push(...renderReactUseFontHelper());
   }
 
   return lines.join("\n");

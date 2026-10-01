@@ -69,11 +69,11 @@ A `<style>` element that defines reusable UIKitML class and ID styles from any p
 _Avoid_: Component node
 
 **Font Face Declaration**:
-A CSS-style `@font-face` rule in a **Stylesheet Block** that gives one runtime `.ttf` source a family name and weight.
+A CSS-style `@font-face` rule in a **Stylesheet Block** that gives one runtime `.ttf` or `.woff2` source a family name and weight.
 _Avoid_: Bundled font import, browser font face
 
 **Runtime TTF Family**:
-One or more **Font Face Declarations** sharing a family name, converted on demand to UIKit's MSDF font-family data.
+One or more **Font Face Declarations** sharing a family name, converted on demand to UIKit's MSDF font-family data from `.ttf` or `.woff2` sources.
 _Avoid_: Web font, system font
 
 **Stylesheet Selector**:

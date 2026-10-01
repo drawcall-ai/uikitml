@@ -133,6 +133,9 @@ importers:
       three:
         specifier: '>=0.162'
         version: 0.184.0
+      woff2-encoder:
+        specifier: ^2.0.0
+        version: 2.0.0
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -1383,6 +1386,10 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
+  woff2-encoder@2.0.0:
+    resolution: {integrity: sha512-wH1rcskczCP5+BJABM88aM3hoEX1VUW6U+Ksx/7bmXvctWGqF+O/YQdC6vWQ7lJS7ny21a0MkAqcZyOP2O8CAg==}
+    engines: {node: '>= 18.x'}
+
   ws@8.20.1:
     resolution: {integrity: sha512-It4dO0K5v//JtTXuPkfEOaI3uUN87iYPnqo/ZzqCoG3g8uhA66QUMs/SrM0YK7/NAu+r4LMh/9dq2A7k+rHs+w==}
     engines: {node: '>=10.0.0'}
@@ -2496,6 +2503,8 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
+
+  woff2-encoder@2.0.0: {}
 
   ws@8.20.1: {}
 
