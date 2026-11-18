@@ -1,6 +1,7 @@
 {
   "name": "uikitml-monorepo",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.18.0",
   "scripts": {
