@@ -55,7 +55,6 @@ npx @drawcall/uikitml validate '<Card><Badge>Live</Badge></Card>'
 npx @drawcall/uikitml render card.uikitml --width 800 --height 600 --color-scheme dark --out card.png
 npx @drawcall/uikitml convert card.uikitml --name Card --color-scheme dark --out Card.tsx
 npx @drawcall/uikitml convert card.uikitml --to three --name createCard --out card.ts
-npx @drawcall/uikitml feedback 'unexpected render output for valid Horizon markup'
 ```
 
 Inputs resolve as stdin with `-`, then file path, then inline source. The default kit is selected by omitting `--kit`; use `--kit horizon` for the Meta Horizon iOS-style 3D/XR kit. Lucide icons and HTML tags are available either way.
@@ -63,8 +62,6 @@ Inputs resolve as stdin with `-`, then file path, then inline source. The defaul
 `validate` prints diagnostics and exits 0 for valid or invalid UIKitML. CLI/runtime failures print `error ...` and exit nonzero.
 
 Conversion targets: default `convert` emits @react-three/fiber code; `convert --to three` emits raw Three.js code. IWSDK consumes `.uikitml` files directly, so no conversion is needed there.
-
-Use `feedback` to report non-user problems: suspected UIKitML bugs, unexpected parser/render/convert behavior, misleading diagnostics, or other tool failures. Keep reports concise and include the command, expected behavior, and actual behavior when known.
 
 ## References
 
