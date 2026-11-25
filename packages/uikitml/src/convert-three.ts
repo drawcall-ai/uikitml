@@ -1,5 +1,7 @@
 import type { PreferredColorScheme } from "@pmndrs/uikit";
 import { resolveComponentRegistry } from "./component-sets.js";
+import { renderThreeLoadFontHelper } from "./convert-font-helpers.js";
+import { isWoff2FontSource } from "./font-source.js";
 import {
   collectFonts,
   getFontFamilyDefinition,
@@ -32,6 +34,7 @@ export function convertToThree(ast: UIKitMLAst, options: ConvertThreeOptions): s
   const stylesheet = Object.keys(ast.stylesheet).length > 0 ? ast.stylesheet : undefined;
   const preferredColorScheme = options.preferredColorScheme ?? ast.metadata.preferredColorScheme;
   const fonts = collectFonts(ast);
+  const usesWoff2 = fonts.ttf.some((fontFace) => isWoff2FontSource(fontFace.src));
   const state: RenderState = {
     nextId: 1,
     hasText: false,
@@ -91,7 +94,9 @@ export function convertToThree(ast: UIKitMLAst, options: ConvertThreeOptions): s
     lines.push("  const ttfLoader = new TTFLoader();");
     for (const [index, fontFace] of fonts.ttf.entries()) {
       lines.push(
-        `  const ttfFont${index} = ttfLoader.loadAsync(${JSON.stringify(fontFace.src)});`,
+        usesWoff2
+          ? `  const ttfFont${index} = loadFont(ttfLoader, ${JSON.stringify(fontFace.src)});`
+          : `  const ttfFont${index} = ttfLoader.loadAsync(${JSON.stringify(fontFace.src)});`,
       );
     }
   }
@@ -112,11 +117,15 @@ export function convertToThree(ast: UIKitMLAst, options: ConvertThreeOptions): s
     lines.push("  const family = Object.values(fontFamilies)[0];");
     lines.push("  const font = family == null ? undefined : Object.values(family)[0];");
     lines.push("  if (font == null) {");
-    lines.push('    throw new Error(`TTF file "${source}" did not contain a font face.`);');
+    lines.push('    throw new Error(`Font file "${source}" did not contain a font face.`);');
     lines.push("  }");
     lines.push("  return font;");
     lines.push("}");
     lines.push("");
+  }
+
+  if (usesWoff2) {
+    lines.push(...renderThreeLoadFontHelper());
   }
 
   if (state.hasText) {

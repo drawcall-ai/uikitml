@@ -179,8 +179,8 @@ describe("parse", () => {
     }
   });
 
-  it("supports CSS @font-face declarations for TTF font families", () => {
-    const result = parse(`
+  it("supports CSS @font-face declarations for TTF and WOFF2 font families", () => {
+    const ttf = parse(`
       <style>
         .title {
           font-family: "Brand Sans";
@@ -195,31 +195,58 @@ describe("parse", () => {
       <div class="title">Ready</div>
     `);
 
-    expect(result.success).toBe(true);
-    if (!result.success) {
+    expect(ttf.success).toBe(true);
+    if (!ttf.success) {
       return;
     }
 
-    expect(result.ast.fontFaces).toEqual([
+    expect(ttf.ast.fontFaces).toEqual([
       {
         fontFamily: "Brand Sans",
         src: "/fonts/BrandSans-Bold.ttf?v=2",
         fontWeight: "700",
       },
     ]);
-    expect(result.ast.stylesheet.title).toMatchObject({
+    expect(ttf.ast.stylesheet.title).toMatchObject({
       fontFamily: "Brand Sans",
       fontWeight: "700",
     });
-    expect(generate(result.ast)).toContain(
+    expect(generate(ttf.ast)).toContain(
       '@font-face { font-family: "Brand Sans"; src: url("/fonts/BrandSans-Bold.ttf?v=2"); font-weight: 700 }',
+    );
+
+    const woff2 = parse(`
+      <style>
+        @font-face {
+          font-family: "Brand Sans";
+          src: url("/fonts/BrandSans-Regular.woff2") format("woff2"), url("/fonts/BrandSans-Regular.ttf") format("truetype");
+          font-weight: 400;
+        }
+      </style>
+      <div font-family="Brand Sans">Ready</div>
+    `);
+
+    expect(woff2.success).toBe(true);
+    if (!woff2.success) {
+      return;
+    }
+
+    expect(woff2.ast.fontFaces).toEqual([
+      {
+        fontFamily: "Brand Sans",
+        src: "/fonts/BrandSans-Regular.woff2",
+        fontWeight: "400",
+      },
+    ]);
+    expect(generate(woff2.ast)).toContain(
+      '@font-face { font-family: "Brand Sans"; src: url("/fonts/BrandSans-Regular.woff2"); font-weight: 400 }',
     );
   });
 
   it("rejects invalid TTF @font-face sources and undeclared custom families", () => {
     const invalidSource = parse(`
       <style>
-        @font-face { font-family: "Brand Sans"; src: url("/fonts/BrandSans.woff2"); }
+        @font-face { font-family: "Brand Sans"; src: url("/fonts/BrandSans.woff"); }
       </style>
       <div font-family="Brand Sans" />
     `);
@@ -230,7 +257,7 @@ describe("parse", () => {
         expect.arrayContaining([
           expect.objectContaining({
             code: "invalid-stylesheet",
-            message: '@font-face "src" must contain a URL to a .ttf file.',
+            message: '@font-face "src" must contain a URL to a .ttf or .woff2 file.',
           }),
         ]),
       );
@@ -689,6 +716,39 @@ describe("parse", () => {
     expect(three).toContain(
       '"400": () => ttfFont0.then((fontFamilies) => getTTFFont(fontFamilies, "/fonts/BrandSans-Regular.ttf"))',
     );
+  });
+
+  it("converts WOFF2 @font-face sources through a TTF decompress helper", () => {
+    const result = parse(`
+      <style>
+        @font-face {
+          font-family: "Brand Sans";
+          src: url("/fonts/BrandSans-Regular.woff2");
+          font-weight: 400;
+        }
+      </style>
+      <div font-family="Brand Sans">Ready</div>
+    `);
+
+    expect(result.success).toBe(true);
+    if (!result.success) {
+      return;
+    }
+
+    const react = convertToReact(result.ast, { componentName: "UI" });
+    expect(react).toContain(
+      'import { Container, TTFLoader, Text } from "@react-three/uikit";',
+    );
+    expect(react).toContain(
+      'const ttfFont0 = useFont("/fonts/BrandSans-Regular.woff2");',
+    );
+    expect(react).toContain('await import("woff2-encoder/decompress")');
+
+    const three = convertToThree(result.ast, { functionName: "createUI" });
+    expect(three).toContain(
+      'const ttfFont0 = loadFont(ttfLoader, "/fonts/BrandSans-Regular.woff2");',
+    );
+    expect(three).toContain('await import("woff2-encoder/decompress")');
   });
 
   it("can parse and instantiate without schema validation", () => {

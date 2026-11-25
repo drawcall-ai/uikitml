@@ -1,5 +1,6 @@
 import type { FontWeight } from "@pmndrs/uikit";
 import { z } from "zod";
+import { findRuntimeFontSource } from "./font-source.js";
 import { formatInvalidPropertyNameMessage, isKebabPropertyName, kebabToCamel } from "./names.js";
 import { normalizeStylesheetSection } from "./style-sections.js";
 import type {
@@ -230,11 +231,11 @@ function parseFontFace(
   }
 
   const rawSource = parsed.properties.src;
-  const src = typeof rawSource === "string" ? findTTFSource(rawSource) : undefined;
+  const src = typeof rawSource === "string" ? findRuntimeFontSource(rawSource) : undefined;
   if (src == null) {
     errors.push({
       code: "invalid-stylesheet",
-      message: '@font-face "src" must contain a URL to a .ttf file.',
+      message: '@font-face "src" must contain a URL to a .ttf or .woff2 file.',
       range: declarationRanges.get("src") ?? rule.selectorRange,
     });
   }
@@ -262,17 +263,6 @@ function parseFontFace(
 function normalizeFontFamily(value: string): string {
   const trimmed = value.trim();
   return /^(["'])(.*)\1$/.exec(trimmed)?.[2] ?? trimmed;
-}
-
-function findTTFSource(value: string): string | undefined {
-  const urlPattern = /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\s*\)/gi;
-  for (const match of value.matchAll(urlPattern)) {
-    const url = (match[1] ?? match[2] ?? match[3])?.trim();
-    if (url != null && /\.ttf(?:[?#]|$)/i.test(url)) {
-      return url;
-    }
-  }
-  return undefined;
 }
 
 function isCSSFontWeight(value: string): value is Extract<FontWeight, string> {

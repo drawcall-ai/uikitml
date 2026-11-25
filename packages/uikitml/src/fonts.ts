@@ -1,5 +1,6 @@
 import { TTFLoader, type FontFamilies, type FontFamilyWeightMap, type MSDFResult } from "@pmndrs/uikit";
 import { z } from "zod";
+import { isWoff2FontSource } from "./font-source.js";
 import type { RetainedStylesheet, UIKitMLAst, UIKitMLFontFace, UIKitMLNode } from "./types.js";
 
 export const fontFamilyNames = [
@@ -322,16 +323,46 @@ function loadTTF(src: string): Promise<MSDFResult> {
   if (existing != null) {
     return existing;
   }
-  const loaded = new TTFLoader().loadAsync(src);
+  const loaded = loadFontSource(src);
   ttfLoads.set(src, loaded);
   return loaded;
+}
+
+async function loadFontSource(src: string): Promise<MSDFResult> {
+  const url = await resolveFontSource(src);
+  try {
+    return await new TTFLoader().loadAsync(url);
+  } finally {
+    if (url !== src) {
+      URL.revokeObjectURL(url);
+    }
+  }
+}
+
+async function resolveFontSource(src: string): Promise<string> {
+  if (!isWoff2FontSource(src)) {
+    return src;
+  }
+  const decompress = (await import("woff2-encoder/decompress")).default;
+  const response = await fetch(src);
+  if (!response.ok) {
+    throw new Error(`Failed to load font "${src}" (${response.status}).`);
+  }
+  const ttf = await decompress(await response.arrayBuffer());
+  return fontBytesToObjectUrl(ttf);
+}
+
+function fontBytesToObjectUrl(ttf: Uint8Array): string {
+  const bytes = new Uint8Array(ttf.byteLength);
+  bytes.set(ttf);
+  return URL.createObjectURL(new Blob([bytes.buffer], { type: "font/ttf" }));
 }
 
 function getTTFFont(fontFamilies: MSDFResult, src: string) {
   const family = Object.values(fontFamilies)[0];
   const font = family == null ? undefined : Object.values(family)[0];
   if (font == null) {
-    throw new Error(`TTF file "${src}" did not contain a font face.`);
+    throw new Error(`Font file "${src}" did not contain a font face.`);
   }
   return font;
 }
